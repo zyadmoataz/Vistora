@@ -1,15 +1,31 @@
-// Nav Bar is a server component 
+"use client"
+
+// Converting to client component to use usePathname hook
 import Link from 'next/link'
 import React from 'react'
 import Menu from './Menu'
 import Image from 'next/image'
 import SearchBar from './SearchBar'
 import dynamic from 'next/dynamic'
+import { usePathname } from 'next/navigation'
 // import NavIcons from './NavIcons'
 // dynamic import
 const NavIcons = dynamic(() => import("./NavIcons"), {ssr:false})  
 
 export default function NavBar() {
+  // Get current path for active link styling
+  const pathname = usePathname();
+  
+  // Function to determine if a link is active
+  const isActive = (path: string) => {
+    if (path === '/' && pathname === '/') return true;
+    if (path !== '/' && pathname.startsWith(path)) return true;
+    return false;
+  };
+  
+  // CSS classes for active and inactive links
+  const activeLinkClass = 'font-semibold text-black';
+  const linkClass = 'text-gray-600 hover:text-black transition-colors duration-200';
   return (
     <div className='h-[100px] px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 relative'>
         {/* MOBILE */}
@@ -32,12 +48,12 @@ export default function NavBar() {
                         <Image width={180} height={180} src='/logo2.png' alt='logo' />
                     </div>
                 </Link>
-                <div className='hidden xl:flex gap-4'>
-                    <Link href='/'>Homepage</Link>
-                    <Link href='/'>Shop</Link>
-                    <Link href='/'>Deals</Link>
-                    <Link href='/'>About</Link>
-                    <Link href='/'>Contact</Link>
+                <div className='hidden xl:flex gap-6'>
+                    <Link href='/' className={isActive('/') && pathname === '/' ? activeLinkClass : linkClass}>Homepage</Link>
+                    <Link href='/shop' className={isActive('/shop') ? activeLinkClass : linkClass}>Shop</Link>
+                    <Link href='/deals' className={isActive('/deals') ? activeLinkClass : linkClass}>Deals</Link>
+                    <Link href='/about' className={isActive('/about') ? activeLinkClass : linkClass}>About</Link>
+                    <Link href='/contact' className={isActive('/contact') ? activeLinkClass : linkClass}>Contact</Link>
                 </div>
             </div>
             {/* RIGHT SECTION */}

@@ -19,11 +19,34 @@ export default async function   ProductList ({categoryId,limit,searchParams}:{ca
   //if there is no limit show me 20 products
   // skip is for pagination, skip old items and start from the new items
   // page that is written in the url is string so change it to int and multiple it by the limit and we are on the first page show 0 and skip nothing
-  let  productQuery =  wixClient.products.queryProducts().startsWith("name",searchParams?.name || "").eq("collectionIds",categoryId).hasSome("productType", [searchParams?.type || "physical", "digital"]).gt("priceData.price", searchParams?.min || 0).lt("priceData.price", searchParams?.max || 99999).limit(limit || PRODUCT_PER_PAGE).skip(
-    searchParams?.page
-      ? parseInt(searchParams.page) * (limit || PRODUCT_PER_PAGE)
-      : 0
-  );
+  // Start building the query
+  let productQuery = wixClient.products.queryProducts();
+  
+  // Add name filter if provided
+  if (searchParams?.name) {
+    productQuery = productQuery.startsWith("name", searchParams.name);
+  }
+  
+  // Add category filter only if categoryId is not empty
+  if (categoryId && categoryId.trim() !== "") {
+    productQuery = productQuery.eq("collectionIds", categoryId);
+  }
+  
+  // Add product type filter
+  productQuery = productQuery.hasSome("productType", [searchParams?.type || "physical", "digital"]);
+  
+  // Add price range filters
+  productQuery = productQuery.gt("priceData.price", searchParams?.min || 0)
+                           .lt("priceData.price", searchParams?.max || 99999);
+  
+  // Note: We'll handle sale filtering after fetching the products
+  // since direct 'onSale' and 'tags' filtering might not be supported in the API
+  
+  // Apply pagination
+  productQuery = productQuery.limit(limit || PRODUCT_PER_PAGE)
+                           .skip(searchParams?.page
+                             ? parseInt(searchParams.page) * (limit || PRODUCT_PER_PAGE)
+                             : 0);
 
   // console.log(searchParams.sort); //asc lastUpdated
   if(searchParams?.sort)
@@ -40,13 +63,72 @@ export default async function   ProductList ({categoryId,limit,searchParams}:{ca
   }
   
 
-  // we can filter our response through function or condition then the find method sends us the promise
-  const res = await productQuery.find();
+  // Fetch products from Wix
+  let res = await productQuery.find();
+  
+  // Post-fetch filtering for sale items
+  if (searchParams?.onSale === "true" || searchParams?.onSale === true) {
+    // Filter items that have a different price (sale price) than the original price
+    res = {
+      ...res,
+      items: res.items.filter(item => 
+        item.priceData && 
+        item.priceData.discountedPrice !== item.priceData.price
+      )
+    };
+  }
+  
+  // Filter by sale type using custom field or description if specified
+  if (searchParams?.tag) {
+    const tag = searchParams.tag.toLowerCase();
+    res = {
+      ...res,
+      items: res.items.filter(item => {
+        // Try to match against description or custom fields
+        const description = item.description?.toLowerCase() || '';
+        const name = item.name?.toLowerCase() || '';
+        
+        // For the purpose of demo, we'll look for keywords in the name or description
+        // In a real app, you might use a custom field on the products
+        return (
+          (tag === 'flash' && (description.includes('flash') || name.includes('flash'))) ||
+          (tag === 'clearance' && (description.includes('clearance') || name.includes('clearance'))) ||
+          (tag === 'bundle' && (description.includes('bundle') || name.includes('bundle')))
+        );
+      })
+    };
+  }
+  
   // console.log(res);
 
+  // Check if there are more products available
+  const hasMoreProducts = res.items.length === (limit || PRODUCT_PER_PAGE);
+  
+  // Create a hidden element with data attribute to access from pagination component
+  const paginationData = JSON.stringify({
+    hasMore: hasMoreProducts,
+    totalItems: res.items.length
+  });
+  
   return (
     <div className='mt-12 flex gap-x-8 gap-y-16 justify-between flex-wrap'>
-      {/* products comes from wix store */}
+      {/* Hidden element to store pagination data */}
+      <div 
+        id="pagination-data" 
+        data-has-more={hasMoreProducts.toString()} 
+        data-total-items={res.items.length}
+        style={{ display: 'none' }}
+      />
+      
+      {/* No products message */}
+      {res.items.length === 0 && (
+        <div className="w-full text-center py-12">
+          <h3 className="text-xl font-medium">No products found</h3>
+          <p className="text-gray-600 mt-2">Try adjusting your filters or search terms</p>
+        </div>
+      )}
+      
+      {/* Products grid */}
       {res.items.map((product:products.Product)=>(      
         <Link href={"/"+product.slug} className='w-full flex flex-col gap-4 sm:w-[45%] lg:w-[22%]' key={product._id}>
           {/* Image */}
