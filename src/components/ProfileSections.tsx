@@ -64,9 +64,9 @@ export function ProfileWishlistTab({
   toggleItem,
 }: {
   wishlist: WishlistItem[];
-  toggleItem: (item: WishlistItem) => void;
+  toggleItem: (item: WishlistItem, silent?: boolean) => void;
 }) {
-  const { addToBagSafely } = useGuardedCartAction();
+  const { addToBagSafely, isLoading } = useGuardedCartAction();
   const cartItems = useCartStore((s) => s.cart.lineItems);
   const purchased = useInventoryStore((s) => s.purchased);
   const addToast = useToastStore((s) => s.addToast);
@@ -106,13 +106,13 @@ export function ProfileWishlistTab({
                 variant="secondary"
                 size="sm"
                 className="flex-1"
-                disabled={isSoldOut}
-                onClick={() => {
+                disabled={isLoading || isSoldOut}
+                onClick={async () => {
                   if (getInCartQuantity(cartItems, item.id, sel.variantId) >= remaining) {
                     addToast("Stock Limit Reached", "info", `Only ${remaining} available in stock.`);
                     return;
                   }
-                  addToBagSafely(item.id, sel.variantId, 1, {
+                  const moved = await addToBagSafely(item.id, sel.variantId, 1, {
                     name: item.name,
                     price: item.price,
                     image: item.imageUrl,
@@ -120,6 +120,7 @@ export function ProfileWishlistTab({
                     options: sel.options,
                     maxStock,
                   });
+                  if (moved) toggleItem(item, true);
                 }}
               >
                 {isSoldOut ? "Sold Out" : "Move to Bag"}

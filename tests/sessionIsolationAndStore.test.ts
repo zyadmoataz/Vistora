@@ -125,6 +125,10 @@ test("useWishlistStore supports guest saving, auto-merges into signed-in account
 
   useWishlistStore.getState().syncForUser("alice@vistora.shop");
   assert.equal(useWishlistStore.getState().items.length, 2);
+
+  useWishlistStore.getState().toggleItem(aliceWatch, true);
+  assert.equal(useWishlistStore.getState().isInWishlist("p2"), false);
+  assert.equal(useWishlistStore.getState().items.length, 1);
 });
 
 test("cart remote existence flags track member session cleanly and mergeLocalCartLine updates quantities safely", () => {

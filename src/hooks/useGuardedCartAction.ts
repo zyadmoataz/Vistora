@@ -25,13 +25,14 @@ export function useGuardedCartAction() {
     variantId: string,
     quantity: number,
     meta?: CartItemMeta
-  ) => {
+  ): Promise<boolean> => {
     if (!isAuthenticated && !wixClient.auth.loggedIn()) {
       addToast("Sign in required", "info", "Please log in or sign up to add items to your cart.");
       router.push(buildLoginHref(getBrowserRelativeUrl()));
-      return;
+      return false;
     }
     await addItem(wixClient, productId, variantId, quantity, meta);
+    return true;
   };
 
   const completeCheckout = (

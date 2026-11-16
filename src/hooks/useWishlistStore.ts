@@ -14,7 +14,7 @@ interface WishlistState {
   activeEmail?: string;
   hydrated: boolean;
   syncForUser: (userEmail?: string) => void;
-  toggleItem: (item: WishlistItem) => void;
+  toggleItem: (item: WishlistItem, silent?: boolean) => void;
   isInWishlist: (id: string) => boolean;
   clearWishlist: () => void;
 }
@@ -70,14 +70,16 @@ export const useWishlistStore = create<WishlistState>((set, get) => ({
     set({ items: merged, activeEmail: cleanEmail, hydrated: true });
   },
 
-  toggleItem: (item) => {
+  toggleItem: (item, silent = false) => {
     const current = get().items;
     const exists = current.some((i) => i.id === item.id);
     const updated = exists ? current.filter((i) => i.id !== item.id) : [...current, item];
 
     writeList(getWishlistKey(get().activeEmail), updated);
     set({ items: updated });
-    useToastStore.getState().addToast(exists ? "Removed from Wishlist" : "Saved to Wishlist", "info", item.name);
+    if (!silent) {
+      useToastStore.getState().addToast(exists ? "Removed from Wishlist" : "Saved to Wishlist", "info", item.name);
+    }
   },
 
   isInWishlist: (id) => get().items.some((i) => i.id === id),
