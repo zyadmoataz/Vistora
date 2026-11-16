@@ -4,6 +4,7 @@ import React from "react";
 import { products } from "@wix/stores";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import ProductCardActions from "./ProductCardActions";
+import { resolveDefaultProductSelection } from "@/lib/wixCartMapper";
 import Badge from "./ui/Badge";
 
 export default function ProductCard({ product }: { product: products.Product }) {
@@ -83,6 +84,8 @@ export default function ProductCard({ product }: { product: products.Product }) 
           name={product.name || "Vistora Piece"}
           price={finalPrice}
           imageUrl={primaryImage}
+          variantId={resolveDefaultProductSelection(product).variantId}
+          options={resolveDefaultProductSelection(product).options}
           mode="add-button"
         />
         <span className="text-xs font-semibold text-slate-600 group-hover:text-brand-600 transition-colors">

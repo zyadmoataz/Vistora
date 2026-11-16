@@ -2,7 +2,15 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { products } from "@wix/stores";
 import { filterAndSortLocalProducts } from "../src/services/catalogFilterHelper";
-import { computeCartTotals, loadLocalCart, saveLocalCart } from "../src/lib/cartHelpers";
+import {
+  buildCatalogReferenceOptions,
+  computeCartTotals,
+  mapWixLineItems,
+  mergeRemoteAndLocalItems,
+  resolveCartImageUrl,
+  resolveDefaultProductSelection,
+} from "../src/lib/cartHelpers";
+import { DEFAULT_VARIANT_ID } from "../src/lib/env";
 import { buildOrderRecord, calculateCheckoutTotal } from "../src/lib/checkoutHelper";
 
 const SAMPLE_PRODUCTS: products.Product[] = [
@@ -72,4 +80,70 @@ test("computeCartTotals & calculateCheckoutTotal compute accurate subtotal and V
   assert.match(order.orderId, /^ORD-\d{6}$/);
   assert.equal(order.total, 200);
   assert.equal(order.items.length, 2);
+});
+
+
+test("mapWixLineItems preserves Wix line item ids, images, names, and scopes fallback metadata", () => {
+  const mapped = mapWixLineItems(
+    [
+      {
+        id: "guid-chair-1",
+        catalogReference: { catalogItemId: "prod-chair" },
+        productName: { original: "Sculpted Chair" },
+        url: { relativePath: "/product-page/sculpted-chair" },
+        quantity: 2,
+        price: { amount: "49.50" },
+        image: { url: "https://static.wixstatic.com/media/chair.jpg" },
+      },
+      {
+        id: "guid-bag-2",
+        catalogReference: { catalogItemId: "prod-bag" },
+        url: { relativePath: "/product-page/tote-bag" },
+        quantity: 1,
+        price: { amount: "20.00" },
+        image: { url: "https://static.wixstatic.com/media/bag.jpg" },
+      },
+    ],
+    "prod-bag",
+    { name: "Bag", price: 20, image: "/fallback-bag.jpg", slug: "bag" }
+  );
+
+  assert.equal(mapped[0]._id, "guid-chair-1");
+  assert.equal(mapped[0].productName?.original, "Sculpted Chair");
+  assert.equal(mapped[0].slug, "sculpted-chair");
+  assert.equal(resolveCartImageUrl(mapped[0].image), "https://static.wixstatic.com/media/chair.jpg");
+  assert.equal(mapped[1]._id, "guid-bag-2");
+  assert.equal(mapped[1].productName?.original, "Bag");
+  assert.equal(mapped[1].slug, "tote-bag");
+});
+
+test("mergeRemoteAndLocalItems keeps local fallback items while avoiding duplicate Wix products", () => {
+  const merged = mergeRemoteAndLocalItems(
+    [{ _id: "guid-bag", productId: "prod-bag", productName: { original: "Bag" }, quantity: 1, price: { amount: "20" } }],
+    [
+      { _id: "prod-vistora-1__default", productId: "prod-vistora-1", productName: { original: "Coat" }, quantity: 1, price: { amount: "249" } },
+      { _id: "prod-bag__default", productId: "prod-bag", productName: { original: "Bag" }, quantity: 1, price: { amount: "20" } },
+    ]
+  );
+
+  assert.equal(merged.length, 2);
+  assert.deepEqual(merged.map((i) => i.productId), ["prod-bag", "prod-vistora-1"]);
+});
+
+test("resolveDefaultProductSelection selects first in-stock variant or option map cleanly", () => {
+  const variantSel = resolveDefaultProductSelection({
+    variants: [
+      { _id: "v-oos", stock: { inStock: false, quantity: 0 }, choices: { Size: "S" } },
+      { _id: "v-live", stock: { inStock: true, trackQuantity: true, quantity: 10 }, choices: { Size: "M" } },
+    ],
+  });
+  assert.equal(variantSel.variantId, "v-live");
+  assert.deepEqual(buildCatalogReferenceOptions(variantSel.variantId, variantSel.options), { variantId: "v-live" });
+
+  const optionSel = resolveDefaultProductSelection({
+    variants: [{ _id: DEFAULT_VARIANT_ID }],
+    productOptions: [{ name: "Color", choices: [{ value: "#000", description: "Onyx", inStock: true, visible: true }] }],
+  });
+  assert.equal(optionSel.variantId, DEFAULT_VARIANT_ID);
+  assert.deepEqual(buildCatalogReferenceOptions(optionSel.variantId, optionSel.options), { options: { Color: "Onyx" } });
 });

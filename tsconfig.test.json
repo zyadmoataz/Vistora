@@ -20,6 +20,7 @@
     "src/lib/wixProductNormalizer.ts",
     "src/lib/checkoutHelper.ts",
     "src/lib/cartHelpers.ts",
+    "src/lib/wixCartMapper.ts",
     "src/lib/env.ts",
     "src/services/authService.ts",
     "src/services/catalogFilterHelper.ts",

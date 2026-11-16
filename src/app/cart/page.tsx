@@ -56,7 +56,7 @@ export default function CartPage() {
     setSubmitting(true);
     const order = buildOrderRecord(items, finalTotal, paymentMethod);
     addOrderRecord(order);
-    clearCart();
+    clearCart(wixClient);
     setSubmitting(false);
     addToast("Order Confirmed!", "success", `Reference #${order.orderId}`);
     router.push(`/success?orderId=${order.orderId}`);
@@ -110,9 +110,9 @@ export default function CartPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="inline-flex items-center gap-3 bg-slate-100 rounded-full px-3.5 py-1.5">
-                    <button type="button" aria-label="Decrease item quantity" onClick={() => updateQuantity(item._id, -1)} className="font-bold text-navy-900 hover:text-brand-600">-</button>
+                    <button type="button" aria-label="Decrease item quantity" onClick={() => updateQuantity(item._id, -1, wixClient)} className="font-bold text-navy-900 hover:text-brand-600">-</button>
                     <span className="text-xs font-bold text-navy-950">{item.quantity}</span>
-                    <button type="button" aria-label="Increase item quantity" onClick={() => updateQuantity(item._id, 1)} className="font-bold text-navy-900 hover:text-brand-600">+</button>
+                    <button type="button" aria-label="Increase item quantity" onClick={() => updateQuantity(item._id, 1, wixClient)} className="font-bold text-navy-900 hover:text-brand-600">+</button>
                   </div>
                   <button type="button" disabled={isLoading} onClick={() => removeItem(wixClient, item._id)} className="text-xs text-slate-600 hover:text-red-700 font-medium">Remove</button>
                 </div>

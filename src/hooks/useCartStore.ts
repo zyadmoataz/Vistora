@@ -3,7 +3,7 @@ import { WixClient } from "@/context/wixContext";
 import { DEFAULT_VARIANT_ID, ENV } from "@/lib/env";
 import { FALLBACK_PRODUCTS } from "@/lib/fallbackProducts";
 import { EXTRA_FALLBACK_PRODUCTS } from "@/lib/fallbackProductsExtra";
-import { CartItemMeta, computeCartTotals, hasRemoteWixCart, loadLocalCart, mapWixLineItems, mergeLocalCartLine, NormalizedCart, NormalizedLineItem, saveLocalCart, setRemoteWixCart } from "@/lib/cartHelpers";
+import { buildCatalogReferenceOptions, CartItemMeta, computeCartTotals, countRawWixProductQuantity, countRemoteProductQuantity, hasRemoteWixCart, isRemoteWixLineItemId, loadLocalCart, mapWixLineItems, mergeLocalCartLine, mergeRemoteAndLocalItems, NormalizedCart, NormalizedLineItem, saveLocalCart, setRemoteWixCart } from "@/lib/cartHelpers";
 import { useToastStore } from "./useToastStore";
 
 export type { CartItemMeta, NormalizedCart, NormalizedLineItem };
@@ -20,9 +20,9 @@ type CartState = {
   counter: number;
   getCart: (wixClient: WixClient, userEmail?: string) => Promise<void>;
   addItem: (wixClient: WixClient, productId: string, variantId: string, quantity: number, meta?: CartItemMeta) => Promise<void>;
-  updateQuantity: (itemId: string, delta: number) => void;
+  updateQuantity: (itemId: string, delta: number, wixClient?: WixClient) => void;
   removeItem: (wixClient: WixClient, itemId: string) => Promise<void>;
-  clearCart: () => void;
+  clearCart: (wixClient?: WixClient) => void;
   resetSessionCart: () => void;
 };
 
@@ -50,9 +50,9 @@ export const useCartStore = create<CartState>((set, get) => ({
         const remote = await wixClient.currentCart.getCurrentCart();
         syncedThisLoad.add(emailKey);
         if (remote?.lineItems && remote.lineItems.length > 0) {
-          const mapped = mapWixLineItems(remote.lineItems);
-          saveLocalCart(mapped, emailKey);
-          set({ ...computeCartTotals(mapped), activeEmail: emailKey, isLoading: false });
+          const merged = mergeRemoteAndLocalItems(mapWixLineItems(remote.lineItems), localItems);
+          saveLocalCart(merged, emailKey);
+          set({ ...computeCartTotals(merged), activeEmail: emailKey, isLoading: false });
           return;
         }
         setRemoteWixCart(emailKey, false);
@@ -69,19 +69,23 @@ export const useCartStore = create<CartState>((set, get) => ({
   addItem: async (wixClient, productId, variantId, quantity, meta) => {
     set({ isLoading: true });
     const emailKey = get().activeEmail || "member@vistora.shop";
-    if (!productId.startsWith("prod-vistora-")) {
+    if (ENV.IS_WIX_CONFIGURED && !productId.startsWith("prod-vistora-")) {
       try {
-        const hasVar = variantId && variantId !== DEFAULT_VARIANT_ID;
+        const prevRemoteQty = countRemoteProductQuantity(get().cart.lineItems, productId);
+        const optionsPayload = buildCatalogReferenceOptions(variantId, meta?.options);
         const res = await wixClient.currentCart.addToCurrentCart({
-          lineItems: [{ catalogReference: { appId: ENV.WIX_APP_ID, catalogItemId: productId, ...(hasVar && { options: { variantId } }) }, quantity }],
+          lineItems: [{ catalogReference: { appId: ENV.WIX_APP_ID, catalogItemId: productId, ...(optionsPayload && { options: optionsPayload }) }, quantity }],
         });
-        if (res?.cart?.lineItems) {
+        const rawRemote = Array.isArray(res?.cart?.lineItems) ? res.cart.lineItems : [];
+        const nextRemoteQty = countRawWixProductQuantity(rawRemote, productId);
+        if (rawRemote.length > 0 && rawRemote.some((li) => li.catalogReference?.catalogItemId === productId)) {
           setRemoteWixCart(emailKey, true);
           syncedThisLoad.add(emailKey);
-          const mapped = mapWixLineItems(res.cart.lineItems, meta);
-          saveLocalCart(mapped, emailKey);
-          set({ ...computeCartTotals(mapped), activeEmail: emailKey, isLoading: false });
-          useToastStore.getState().addToast("Added to Cart", "success", `${quantity}x ${meta?.name || "Item"}`);
+          const merged = mergeRemoteAndLocalItems(mapWixLineItems(rawRemote, productId, meta), get().cart.lineItems);
+          saveLocalCart(merged, emailKey);
+          set({ ...computeCartTotals(merged), activeEmail: emailKey, isLoading: false });
+          const msg = nextRemoteQty > prevRemoteQty ? ["Added to Cart", "success", `${quantity}x ${meta?.name || "Item"}`] : ["Bag Updated", "info", `${meta?.name || "Item"} (${nextRemoteQty} in bag)`];
+          useToastStore.getState().addToast(msg[0], msg[1] as "success" | "info", msg[2]);
           return;
         }
       } catch {
@@ -100,27 +104,36 @@ export const useCartStore = create<CartState>((set, get) => ({
     useToastStore.getState().addToast("Added to Cart", "success", `${quantity}x ${itemName}`);
   },
 
-  updateQuantity: (itemId, delta) => {
-    const items = get().cart.lineItems.map((i) => (i._id === itemId ? { ...i, quantity: Math.max(0, Math.min(99, i.quantity + delta)) } : i)).filter((i) => i.quantity > 0);
+  updateQuantity: (itemId, delta, wixClient) => {
+    const target = get().cart.lineItems.find((i) => i._id === itemId);
+    if (!target) return;
+    const nextQty = Math.max(0, Math.min(99, target.quantity + delta));
+    const items = get().cart.lineItems.map((i) => (i._id === itemId ? { ...i, quantity: nextQty } : i)).filter((i) => i.quantity > 0);
+    if (!items.some((i) => isRemoteWixLineItemId(i._id))) setRemoteWixCart(get().activeEmail, false);
     saveLocalCart(items, get().activeEmail);
     set({ ...computeCartTotals(items) });
+    if (wixClient && ENV.IS_WIX_CONFIGURED && isRemoteWixLineItemId(itemId)) {
+      const req = nextQty === 0 ? wixClient.currentCart.removeLineItemsFromCurrentCart([itemId]) : wixClient.currentCart.updateCurrentCartLineItemQuantity([{ _id: itemId, quantity: nextQty }]);
+      req.catch(() => undefined);
+    }
   },
 
   removeItem: async (wixClient, itemId) => {
     set({ isLoading: true });
     try {
-      if (!itemId.includes("__")) await wixClient.currentCart.removeLineItemsFromCurrentCart([itemId]);
+      if (ENV.IS_WIX_CONFIGURED && isRemoteWixLineItemId(itemId)) await wixClient.currentCart.removeLineItemsFromCurrentCart([itemId]);
     } catch {
       // Proceed with local removal
     }
     const filtered = get().cart.lineItems.filter((i) => i._id !== itemId);
-    if (filtered.length === 0) setRemoteWixCart(get().activeEmail, false);
+    if (!filtered.some((i) => isRemoteWixLineItemId(i._id))) setRemoteWixCart(get().activeEmail, false);
     saveLocalCart(filtered, get().activeEmail);
     set({ ...computeCartTotals(filtered), isLoading: false });
     useToastStore.getState().addToast("Removed from Cart", "info");
   },
 
-  clearCart: () => {
+  clearCart: (wixClient) => {
+    if (wixClient && ENV.IS_WIX_CONFIGURED) wixClient.currentCart.deleteCurrentCart().catch(() => undefined);
     setRemoteWixCart(get().activeEmail, false);
     saveLocalCart([], get().activeEmail);
     set({ cart: EMPTY_CART, counter: 0, isLoading: false });

@@ -36,7 +36,7 @@ export default function CartModal({ onClose }: { onClose?: () => void }) {
     const total = parseFloat(cart.subtotal?.amount || "0");
     const order = buildOrderRecord(items, total, "Express Checkout");
     addOrderRecord(order);
-    clearCart();
+    clearCart(wixClient);
     setSubmitting(false);
     addToast("Order Confirmed!", "success", `Order #${order.orderId} placed.`);
     onClose?.();
@@ -83,9 +83,9 @@ export default function CartModal({ onClose }: { onClose?: () => void }) {
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <div className="inline-flex items-center gap-2 bg-slate-100 rounded-full px-2.5 py-1">
-                      <button type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(item._id, -1)} className="font-bold text-navy-900 hover:text-brand-600 px-1">-</button>
+                      <button type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(item._id, -1, wixClient)} className="font-bold text-navy-900 hover:text-brand-600 px-1">-</button>
                       <span className="font-semibold text-navy-950">{item.quantity}</span>
-                      <button type="button" aria-label="Increase quantity" onClick={() => updateQuantity(item._id, 1)} className="font-bold text-navy-900 hover:text-brand-600 px-1">+</button>
+                      <button type="button" aria-label="Increase quantity" onClick={() => updateQuantity(item._id, 1, wixClient)} className="font-bold text-navy-900 hover:text-brand-600 px-1">+</button>
                     </div>
                     <button type="button" disabled={isLoading} onClick={() => removeItem(wixClient, item._id)} className="text-slate-600 hover:text-red-700 font-medium transition-colors">
                       Remove

@@ -33,9 +33,11 @@ Object.assign(globalThis, {
   document: { cookie: "" },
 });
 
+import { ENV } from "../src/lib/env";
 import { hasRemoteWixCart, loadLocalCart, mergeLocalCartLine, saveLocalCart, setRemoteWixCart } from "../src/lib/cartHelpers";
 
 const { useAuthStore } = require("../src/hooks/useAuthStore") as typeof import("../src/hooks/useAuthStore");
+const { useCartStore } = require("../src/hooks/useCartStore") as typeof import("../src/hooks/useCartStore");
 const { useWishlistStore } = require("../src/hooks/useWishlistStore") as typeof import("../src/hooks/useWishlistStore");
 
 test("carts are strictly isolated per user email and resist corrupted storage payloads", () => {
@@ -152,4 +154,115 @@ test("cart remote existence flags track member session cleanly and mergeLocalCar
   });
   assert.equal(mergedTwice.length, 1);
   assert.equal(mergedTwice[0].quantity, 5);
+});
+
+
+import type { WixClient } from "../src/context/wixContext";
+import { DEFAULT_VARIANT_ID } from "../src/lib/env";
+
+test("useCartStore prevents zero-counter phantom toasts, isolates item names, and syncs updates/deletes to Wix", async () => {
+  mockLocalStorage.clear();
+  const mutableEnv = ENV as { IS_WIX_CONFIGURED: boolean };
+  const prevConfigured = mutableEnv.IS_WIX_CONFIGURED;
+  mutableEnv.IS_WIX_CONFIGURED = true;
+
+  const calls: { updated?: unknown; removed?: unknown; deleted?: boolean } = {};
+
+  try {
+    useCartStore.setState({
+      cart: { lineItems: [], subtotal: { amount: "0.00" } },
+      activeEmail: "alex@vistora.shop",
+      isLoading: false,
+      counter: 0,
+    });
+
+    const emptyAddClient = {
+      auth: { loggedIn: () => true },
+      currentCart: { addToCurrentCart: async () => ({ cart: { lineItems: [] } }) },
+    } as unknown as WixClient;
+
+    await useCartStore.getState().addItem(emptyAddClient, "wix-bag", DEFAULT_VARIANT_ID, 1, {
+      name: "Bag",
+      price: 20,
+      image: "/bag.jpg",
+      slug: "bag",
+    });
+
+    assert.equal(useCartStore.getState().counter, 1);
+    assert.equal(useCartStore.getState().cart.lineItems[0].productName?.original, "Bag");
+
+    useCartStore.setState({
+      cart: { lineItems: [], subtotal: { amount: "0.00" } },
+      activeEmail: "alex@vistora.shop",
+      isLoading: false,
+      counter: 0,
+    });
+
+    const liveWixClient = {
+      auth: { loggedIn: () => true },
+      currentCart: {
+        addToCurrentCart: async () => ({
+          cart: {
+            lineItems: [
+              {
+                id: "guid-chair",
+                catalogReference: { catalogItemId: "wix-chair" },
+                productName: { original: "Wooden Chair" },
+                url: { relativePath: "/product-page/wooden-chair" },
+                quantity: 2,
+                price: { amount: "49.50" },
+                image: { url: "https://cdn.example/chair.jpg" },
+              },
+              {
+                id: "guid-bag",
+                catalogReference: { catalogItemId: "wix-bag" },
+                productName: { original: "Bag" },
+                url: { relativePath: "/product-page/bag" },
+                quantity: 1,
+                price: { amount: "20.00" },
+                image: { url: "https://cdn.example/bag.jpg" },
+              },
+            ],
+          },
+        }),
+        updateCurrentCartLineItemQuantity: async (updates: unknown) => {
+          calls.updated = updates;
+        },
+        removeLineItemsFromCurrentCart: async (ids: unknown) => {
+          calls.removed = ids;
+        },
+        deleteCurrentCart: async () => {
+          calls.deleted = true;
+        },
+      },
+    } as unknown as WixClient;
+
+    await useCartStore.getState().addItem(liveWixClient, "wix-bag", DEFAULT_VARIANT_ID, 1, {
+      name: "Bag",
+      price: 20,
+      image: "/bag.jpg",
+      slug: "bag",
+    });
+
+    const state = useCartStore.getState();
+    assert.equal(state.counter, 3);
+    assert.equal(state.cart.subtotal.amount, "119.00");
+    assert.equal(state.cart.lineItems[0]._id, "guid-chair");
+    assert.equal(state.cart.lineItems[0].productName?.original, "Wooden Chair");
+    assert.equal(state.cart.lineItems[1].productName?.original, "Bag");
+
+    useCartStore.getState().updateQuantity("guid-chair", -1, liveWixClient);
+    assert.deepEqual(calls.updated, [{ _id: "guid-chair", quantity: 1 }]);
+    assert.equal(useCartStore.getState().counter, 2);
+
+    await useCartStore.getState().removeItem(liveWixClient, "guid-chair");
+    assert.deepEqual(calls.removed, ["guid-chair"]);
+    assert.equal(useCartStore.getState().counter, 1);
+
+    useCartStore.getState().clearCart(liveWixClient);
+    assert.equal(calls.deleted, true);
+    assert.equal(useCartStore.getState().counter, 0);
+  } finally {
+    mutableEnv.IS_WIX_CONFIGURED = prevConfigured;
+  }
 });

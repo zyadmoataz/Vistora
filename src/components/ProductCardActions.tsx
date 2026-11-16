@@ -12,6 +12,8 @@ interface ProductCardActionsProps {
   name: string;
   price: number;
   imageUrl: string;
+  variantId?: string;
+  options?: Record<string, string>;
   mode: "wishlist-icon" | "add-button";
 }
 
@@ -21,6 +23,8 @@ export default function ProductCardActions({
   name,
   price,
   imageUrl,
+  variantId = DEFAULT_VARIANT_ID,
+  options,
   mode,
 }: ProductCardActionsProps) {
   const { addToBagSafely, isLoading } = useGuardedCartAction();
@@ -55,11 +59,12 @@ export default function ProductCardActions({
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        addToBagSafely(productId, DEFAULT_VARIANT_ID, 1, {
+        addToBagSafely(productId, variantId, 1, {
           name,
           price,
           image: imageUrl,
           slug,
+          options,
         });
       }}
       className="w-max rounded-full ring-1 ring-slate-300 py-2 px-4 text-navy-950 font-semibold text-xs hover:bg-brand-600 hover:text-white hover:ring-brand-600 transition-all active:scale-95 disabled:opacity-50"

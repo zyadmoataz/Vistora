@@ -1,61 +1,10 @@
-import { media as wixMedia } from "@wix/sdk";
-import { sanitizeProductTitle } from "./wixProductNormalizer";
+import { NormalizedCart, NormalizedLineItem } from "./wixCartMapper";
 
-export interface CartItemMeta {
-  name?: string;
-  price?: number;
-  image?: string;
-  slug?: string;
-  variantLabel?: string;
-}
-
-export interface NormalizedLineItem {
-  _id: string;
-  productId: string;
-  slug?: string;
-  variantId?: string;
-  productName?: { original?: string };
-  quantity: number;
-  price?: { amount?: string };
-  image?: string;
-  availability?: { status?: string };
-}
-
-export interface NormalizedCart {
-  lineItems: NormalizedLineItem[];
-  subtotal: { amount: string };
-}
+export * from "./wixCartMapper";
 
 const LEGACY_CART_KEY = "vistora_cart_v1";
 const getCartStorageKey = (email?: string) =>
   email ? `vistora_cart_v2_${email.toLowerCase().trim()}` : null;
-
-export const resolveCartImageUrl = (img?: string) => {
-  if (!img) return "/product.png";
-  if (img.startsWith("wix:image")) {
-    try {
-      return wixMedia.getScaledToFillImageUrl(img, 72, 96, {});
-    } catch {
-      return "/product.png";
-    }
-  }
-  return img;
-};
-
-export const mapWixLineItems = (
-  items: { _id?: string | null; catalogReference?: { catalogItemId?: string | null } | null; productName?: { original?: string | null } | null; quantity?: number | null; price?: { amount?: string | null } | null; image?: string | null; availability?: { status?: string | null } | null }[],
-  fallbackMeta?: CartItemMeta
-): NormalizedLineItem[] =>
-  items.map((li, idx) => ({
-    _id: li._id || `li-${Date.now()}-${idx}`,
-    productId: li.catalogReference?.catalogItemId || "",
-    slug: fallbackMeta?.slug,
-    productName: { original: sanitizeProductTitle(fallbackMeta?.name || li.productName?.original, idx) },
-    quantity: li.quantity || 1,
-    price: { amount: String(li.price?.amount || fallbackMeta?.price || "0") },
-    image: li.image || fallbackMeta?.image,
-    availability: { status: li.availability?.status || "IN STOCK" },
-  }));
 
 export const computeCartTotals = (
   items: NormalizedLineItem[]
