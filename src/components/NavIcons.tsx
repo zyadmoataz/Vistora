@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { useSessionSync } from "@/hooks/useSessionSync";
+import { buildLoginHref } from "@/lib/securityHelpers";
 import { BagIcon, HeartIcon, UserIcon } from "./ui/Icons";
 
 const CartModal = dynamic(() => import("./CartModal"), { ssr: false });
@@ -17,7 +18,7 @@ export default function NavIcons() {
 
   const pathname = usePathname();
   const router = useRouter();
-  const { wixClient, isLoggedIn, user, counter, wishlistItems, logoutUser } = useSessionSync();
+  const { wixClient, isLoggedIn, user, counter, wishlistItems, logoutUser, openAuthPage } = useSessionSync();
 
   useEffect(() => {
     const onOutside = (event: MouseEvent) => {
@@ -133,10 +134,10 @@ export default function NavIcons() {
         </>
       ) : (
         <div className="flex items-center gap-2">
-          <Link href="/login" aria-current={pathname === "/login" ? "page" : undefined} className="px-3.5 py-2 rounded-full text-xs font-semibold text-navy-900 hover:text-brand-600 hover:bg-slate-100 transition-colors">
+          <Link href={buildLoginHref(pathname)} onClick={(e) => { e.preventDefault(); openAuthPage("login", pathname); }} aria-current={pathname === "/login" ? "page" : undefined} className="px-3.5 py-2 rounded-full text-xs font-semibold text-navy-900 hover:text-brand-600 hover:bg-slate-100 transition-colors">
             Log In
           </Link>
-          <Link href="/login?mode=register" className="px-4 py-2 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors shadow-sm">
+          <Link href={buildLoginHref(pathname, "register")} onClick={(e) => { e.preventDefault(); openAuthPage("register", pathname); }} className="px-4 py-2 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors shadow-sm">
             Sign Up
           </Link>
         </div>

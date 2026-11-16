@@ -36,7 +36,7 @@ export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-  const safeRedirect = isSafeRedirectPath(searchParams.get("redirect"));
+  const safeRedirect = isSafeRedirectPath(searchParams.get("redirect"), "/");
 
   useEffect(() => {
     setMode(searchParams.get("mode") === "register" ? AUTH_MODE.REGISTER : AUTH_MODE.LOGIN);

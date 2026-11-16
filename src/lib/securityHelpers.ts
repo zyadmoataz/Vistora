@@ -13,8 +13,11 @@ export const isValidEmail = (email: string): boolean => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed);
 };
 
-export const isSafeRedirectPath = (raw?: string | null): string => {
-  if (!raw || typeof raw !== "string") return "/profile";
+export const isSafeRedirectPath = (
+  raw?: string | null,
+  fallback = "/profile"
+): string => {
+  if (!raw || typeof raw !== "string") return fallback;
   const trimmed = raw.trim();
   if (
     !trimmed.startsWith("/") ||
@@ -23,9 +26,25 @@ export const isSafeRedirectPath = (raw?: string | null): string => {
     trimmed.includes("\\") ||
     /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
   ) {
-    return "/profile";
+    return fallback;
   }
   return trimmed;
+};
+
+export const getBrowserRelativeUrl = (fallback = "/"): string =>
+  typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : fallback;
+
+export const buildLoginHref = (
+  currentPath?: string | null,
+  mode: "login" | "register" = "login"
+): string => {
+  const params = new URLSearchParams();
+  if (mode === "register") params.set("mode", "register");
+  if (currentPath && !currentPath.startsWith("/login") && isSafeRedirectPath(currentPath, "") === currentPath) {
+    params.set("redirect", currentPath);
+  }
+  const qs = params.toString();
+  return qs ? `/login?${qs}` : "/login";
 };
 
 export const serializeJsonLd = (data: unknown): string =>

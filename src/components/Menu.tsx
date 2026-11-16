@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSessionSync } from "@/hooks/useSessionSync";
+import { buildLoginHref } from "@/lib/securityHelpers";
 import { BagIcon, CloseIcon, HeartIcon, MenuIcon, UserIcon } from "./ui/Icons";
 import SearchBar from "./SearchBar";
 
@@ -20,7 +21,7 @@ const NAV_LINKS = [
 export default function Menu() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { wixClient, isLoggedIn, user, counter, wishlistItems, logoutUser } = useSessionSync();
+  const { wixClient, isLoggedIn, user, counter, wishlistItems, logoutUser, openAuthPage } = useSessionSync();
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
@@ -73,8 +74,8 @@ export default function Menu() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <Link href="/login" onClick={() => setOpen(false)} className="py-3 rounded-full bg-white/15 text-center font-semibold text-sm hover:bg-white/25 transition-colors">Log In</Link>
-              <Link href="/login?mode=register" onClick={() => setOpen(false)} className="py-3 rounded-full bg-brand-600 text-center font-semibold text-sm hover:bg-brand-700 transition-colors">Sign Up</Link>
+              <Link href={buildLoginHref(pathname)} onClick={(e) => { e.preventDefault(); setOpen(false); openAuthPage("login", pathname); }} className="py-3 rounded-full bg-white/15 text-center font-semibold text-sm hover:bg-white/25 transition-colors">Log In</Link>
+              <Link href={buildLoginHref(pathname, "register")} onClick={(e) => { e.preventDefault(); setOpen(false); openAuthPage("register", pathname); }} className="py-3 rounded-full bg-brand-600 text-center font-semibold text-sm hover:bg-brand-700 transition-colors">Sign Up</Link>
             </div>
           )}
         </div>
@@ -100,7 +101,7 @@ export default function Menu() {
           </Link>
         </>
       ) : (
-        <Link href="/login" className="px-3.5 py-2 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">Log In</Link>
+        <Link href={buildLoginHref(pathname)} onClick={(e) => { e.preventDefault(); openAuthPage("login", pathname); }} className="px-3.5 py-2 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">Log In</Link>
       )}
       <button type="button" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} onClick={() => setOpen((prev) => !prev)} className="p-2.5 rounded-full hover:bg-slate-100 text-navy-900 transition-colors">
         {open ? <CloseIcon className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { buildLoginHref, getBrowserRelativeUrl } from "@/lib/securityHelpers";
 import useWixClient from "./useWixClient";
 import { useAuthStore } from "./useAuthStore";
 import { useCartStore } from "./useCartStore";
@@ -10,6 +12,7 @@ import { useWishlistStore } from "./useWishlistStore";
  * Coordinates auth, wishlist, and user-scoped cart hydration across header navigation bars.
  */
 export function useSessionSync() {
+  const router = useRouter();
   const wixClient = useWixClient();
   const { counter, getCart } = useCartStore();
   const { isAuthenticated, isHydrated, user, hydrateAuth, logoutUser } = useAuthStore();
@@ -28,6 +31,10 @@ export function useSessionSync() {
     syncForUser(memberEmail);
   }, [isHydrated, isLoggedIn, user?.email, wixClient, getCart, syncForUser]);
 
+  const openAuthPage = (mode: "login" | "register" = "login", fallbackPath = "/") => {
+    router.push(buildLoginHref(getBrowserRelativeUrl(fallbackPath), mode));
+  };
+
   return {
     wixClient,
     isLoggedIn,
@@ -35,5 +42,6 @@ export function useSessionSync() {
     counter,
     wishlistItems,
     logoutUser,
+    openAuthPage,
   };
 }

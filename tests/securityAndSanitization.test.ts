@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildLoginHref,
   isSafeRedirectPath,
   isValidEmail,
   sanitizePlainText,
@@ -21,6 +22,10 @@ test("isSafeRedirectPath blocks open redirects and protocol handlers", () => {
   assert.equal(isSafeRedirectPath("//evil.com"), "/profile");
   assert.equal(isSafeRedirectPath("javascript:alert(1)"), "/profile");
   assert.equal(isSafeRedirectPath("/\\evil.com"), "/profile");
+  assert.equal(isSafeRedirectPath(null, "/"), "/");
+  assert.equal(buildLoginHref("/list?cat=apparel", "login"), "/login?redirect=%2Flist%3Fcat%3Dapparel");
+  assert.equal(buildLoginHref("/atelier-coat", "register"), "/login?mode=register&redirect=%2Fatelier-coat");
+  assert.equal(buildLoginHref("/login?mode=register", "login"), "/login");
 });
 
 test("isValidEmail validates standard email addresses and rejects malformed inputs", () => {
