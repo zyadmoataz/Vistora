@@ -59,3 +59,10 @@ export const getCookieSecurityOptions = (days = 7) => ({
   sameSite: "lax" as const,
   secure: typeof window !== "undefined" && window.location.protocol === "https:",
 });
+
+/** Races async external SDK calls against a bounded timeout so SSR/edge requests never stall. */
+export const withTimeout = <T>(promise: Promise<T>, ms = 450): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms)),
+  ]);

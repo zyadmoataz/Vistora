@@ -309,3 +309,33 @@ test("useInventoryStore deducts purchased quantities per variant and persists ac
   ]);
   assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-0-249", 8), 0);
 });
+
+
+test("useCartStore.updateQuantity clamps bag increments against remaining post-purchase stock", () => {
+  mockLocalStorage.clear();
+  useInventoryStore.setState({ purchased: { "prod-vistora-001__var-0-0-249": 2 }, hydrated: true });
+  useCartStore.setState({
+    cart: {
+      lineItems: [
+        {
+          _id: "prod-vistora-001__var-0-0-249",
+          productId: "prod-vistora-001",
+          variantId: "var-0-0-249",
+          productName: { original: "Atelier Cashmere Trench Coat" },
+          quantity: 6,
+          price: { amount: "249.00" },
+        },
+      ],
+      subtotal: { amount: "1494.00" },
+    },
+    activeEmail: "alex@vistora.shop",
+    isLoading: false,
+    counter: 6,
+  });
+
+  useCartStore.getState().updateQuantity("prod-vistora-001__var-0-0-249", 1);
+  assert.equal(useCartStore.getState().counter, 6);
+
+  useCartStore.getState().updateQuantity("prod-vistora-001__var-0-0-249", -1);
+  assert.equal(useCartStore.getState().counter, 5);
+});

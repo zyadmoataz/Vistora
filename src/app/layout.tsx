@@ -6,6 +6,7 @@ import NetworkStatusBanner from "@/components/NetworkStatusBanner";
 import Footer from "@/components/Footer";
 import ToastContainer from "@/components/ui/ToastContainer";
 import { WixClientContextProvider } from "@/context/wixContext";
+import { ENV } from "@/lib/env";
 import { serializeJsonLd } from "@/lib/securityHelpers";
 
 export const viewport: Viewport = {
@@ -15,7 +16,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://vistora.shop"),
+  metadataBase: new URL(ENV.SITE_URL),
   title: {
     default: "Vistora Atelier | Modern Luxury E-Commerce",
     template: "%s | Vistora Atelier",
@@ -42,7 +43,7 @@ const ORG_SCHEMA = {
   "@context": "https://schema.org",
   "@type": "Organization",
   name: "Vistora Atelier",
-  url: "https://vistora.shop",
+  url: ENV.SITE_URL,
   founder: "Zyaad Moataz",
   address: { "@type": "PostalAddress", addressLocality: "Cairo", addressCountry: "EG" },
 };

@@ -1,14 +1,7 @@
 import { OAuthStrategy, createClient } from "@wix/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { ENV } from "./lib/env";
-
-const withFastTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
-  Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout")), ms)
-    ),
-  ]);
+import { withTimeout } from "./lib/securityHelpers";
 
 export const middleware = async (request: NextRequest) => {
   const isPrefetch =
@@ -37,7 +30,7 @@ export const middleware = async (request: NextRequest) => {
     const wixClient = createClient({
       auth: OAuthStrategy({ clientId: ENV.WIX_CLIENT_ID }),
     });
-    const tokens = await withFastTimeout(
+    const tokens = await withTimeout(
       wixClient.auth.generateVisitorTokens(),
       350
     );

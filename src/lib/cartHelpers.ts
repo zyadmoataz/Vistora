@@ -70,13 +70,13 @@ export const setRemoteWixCart = (email: string | undefined, exists: boolean): vo
 
 export const mergeLocalCartLine = (
   items: NormalizedLineItem[],
-  entry: { productId: string; variantId: string; quantity: number; name: string; price: number; image: string; slug?: string }
+  entry: { productId: string; variantId: string; quantity: number; name: string; price: number; image: string; slug?: string; maxStock?: number }
 ): NormalizedLineItem[] => {
   const next = [...items];
   const lineKey = `${entry.productId}__${entry.variantId || "default"}`;
   const idx = next.findIndex((i) => i._id === lineKey);
   if (idx > -1) {
-    next[idx] = { ...next[idx], quantity: Math.min(99, next[idx].quantity + entry.quantity) };
+    next[idx] = { ...next[idx], maxStock: entry.maxStock ?? next[idx].maxStock, quantity: Math.min(99, next[idx].quantity + entry.quantity) };
     return next;
   }
   next.push({
@@ -88,6 +88,7 @@ export const mergeLocalCartLine = (
     quantity: entry.quantity,
     price: { amount: entry.price.toFixed(2) },
     image: entry.image,
+    maxStock: entry.maxStock,
     availability: { status: "IN STOCK" },
   });
   return next;

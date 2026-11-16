@@ -100,7 +100,7 @@ export default function HomePage() {
           </Link>
         </div>
         <Suspense fallback={<ProductGridSkeleton count={4} />}>
-          <ProductList categoryId={ALL_PRODUCTS_CATEGORY_ID} searchParams={{ sort: "desc price" }} limit={4} />
+          <ProductList categoryId={ALL_PRODUCTS_CATEGORY_ID} searchParams={{ sort: "asc lastUpdated" }} limit={4} />
         </Suspense>
       </section>
     </main>

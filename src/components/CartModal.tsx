@@ -2,56 +2,39 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCartStore } from "@/hooks/useCartStore";
-import { useAuthStore } from "@/hooks/useAuthStore";
-import { useInventoryStore } from "@/hooks/useInventoryStore";
-import { useToastStore } from "@/hooks/useToastStore";
+import { useGuardedCartAction } from "@/hooks/useGuardedCartAction";
 import { resolveCartImageUrl } from "@/lib/cartHelpers";
-import { buildOrderRecord } from "@/lib/checkoutHelper";
 import useWixClient from "@/hooks/useWixClient";
 import Button from "./ui/Button";
 import { CloseIcon } from "./ui/Icons";
 
 export default function CartModal({ onClose }: { onClose?: () => void }) {
   const wixClient = useWixClient();
-  const router = useRouter();
-  const { cart, isLoading, removeItem, updateQuantity, clearCart } = useCartStore();
-  const { isAuthenticated, addOrderRecord } = useAuthStore();
-  const recordPurchase = useInventoryStore((s) => s.recordPurchase);
-  const { addToast } = useToastStore();
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const { cart, isLoading, removeItem, updateQuantity } = useCartStore();
+  const { completeCheckout } = useGuardedCartAction();
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => { closeBtnRef.current?.focus(); }, []);
 
   const items = cart?.lineItems || [];
 
   const handleExpressCheckout = () => {
     if (items.length === 0) return;
-    if (!isAuthenticated && !wixClient.auth.loggedIn()) {
-      addToast("Sign in required", "info", "Please sign in before placing an order.");
-      onClose?.();
-      router.push("/login?redirect=/cart");
-      return;
-    }
-
     setSubmitting(true);
     const total = parseFloat(cart.subtotal?.amount || "0");
-    const order = buildOrderRecord(items, total, "Express Checkout");
-    addOrderRecord(order);
-    recordPurchase(items);
-    clearCart(wixClient);
+    completeCheckout(items, total, "Express Checkout", onClose);
     setSubmitting(false);
-    addToast("Order Confirmed!", "success", `Order #${order.orderId} placed.`);
-    onClose?.();
-    router.push(`/success?orderId=${order.orderId}`);
   };
 
   return (
-    <div role="dialog" aria-label="Shopping Bag" className="w-[340px] sm:w-[400px] absolute p-6 rounded-3xl shadow-elevated bg-white border border-slate-200 top-14 right-0 z-40 flex flex-col gap-5 animate-fade-in-up">
+    <div role="dialog" aria-modal="true" aria-label="Shopping Bag" className="w-[340px] sm:w-[400px] absolute p-6 rounded-3xl shadow-elevated bg-white border border-slate-200 top-14 right-0 z-40 flex flex-col gap-5 animate-fade-in-up">
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <h2 className="text-lg font-bold text-navy-950">Shopping Bag</h2>
         {onClose && (
-          <button type="button" onClick={onClose} aria-label="Close cart modal" className="text-slate-600 hover:text-navy-950 p-1 rounded-full hover:bg-slate-100 transition-colors">
+          <button ref={closeBtnRef} type="button" onClick={onClose} aria-label="Close cart modal" className="text-slate-600 hover:text-navy-950 p-1 rounded-full hover:bg-slate-100 transition-colors">
             <CloseIcon className="w-4 h-4" />
           </button>
         )}

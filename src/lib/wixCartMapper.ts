@@ -10,6 +10,7 @@ export interface CartItemMeta {
   slug?: string;
   variantLabel?: string;
   options?: Record<string, string>;
+  maxStock?: number;
 }
 
 export interface NormalizedLineItem {
@@ -21,6 +22,7 @@ export interface NormalizedLineItem {
   quantity: number;
   price?: { amount?: string };
   image?: string;
+  maxStock?: number;
   availability?: { status?: string };
 }
 
@@ -32,10 +34,7 @@ export interface NormalizedCart {
 export interface WixRawLineItem {
   id?: string | null;
   _id?: string | null;
-  catalogReference?: {
-    catalogItemId?: string | null;
-    options?: Record<string, unknown> | null;
-  } | null;
+  catalogReference?: { catalogItemId?: string | null; options?: Record<string, unknown> | null } | null;
   productName?: { original?: string | null; translated?: string | null } | null;
   url?: string | { relativePath?: string | null } | null;
   quantity?: number | null;
@@ -44,10 +43,7 @@ export interface WixRawLineItem {
   availability?: { status?: string | null } | null;
 }
 
-export interface DefaultProductSelection {
-  variantId: string;
-  options?: Record<string, string>;
-}
+export interface DefaultProductSelection { variantId: string; options?: Record<string, string>; }
 
 export const isRemoteWixLineItemId = (itemId?: string): boolean =>
   Boolean(itemId && !itemId.includes("__") && !itemId.startsWith("wix-li-"));
@@ -95,6 +91,7 @@ export const mapWixLineItems = (
       quantity: Math.max(1, li.quantity || 1),
       price: { amount: String(rawPrice) },
       image: rawImg || (isAddedMatch ? fallbackMeta?.image : undefined),
+      maxStock: isAddedMatch ? fallbackMeta?.maxStock : undefined,
       availability: { status: li.availability?.status || "IN STOCK" },
     };
   });
@@ -104,9 +101,11 @@ export const mergeRemoteAndLocalItems = (
   remoteItems: NormalizedLineItem[],
   existingItems: NormalizedLineItem[]
 ): NormalizedLineItem[] => {
-  const remoteProductIds = new Set(remoteItems.map((i) => i.productId).filter(Boolean));
+  const existingStockMap = new Map(existingItems.filter((i) => i.maxStock !== undefined).map((i) => [i.productId, i.maxStock]));
+  const enrichedRemote = remoteItems.map((r) => ({ ...r, maxStock: r.maxStock ?? existingStockMap.get(r.productId) }));
+  const remoteProductIds = new Set(enrichedRemote.map((i) => i.productId).filter(Boolean));
   const localOnly = existingItems.filter((i) => !isRemoteWixLineItemId(i._id) && !remoteProductIds.has(i.productId));
-  return [...remoteItems, ...localOnly];
+  return [...enrichedRemote, ...localOnly];
 };
 
 export const buildCatalogReferenceOptions = (

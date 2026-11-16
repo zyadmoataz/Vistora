@@ -29,6 +29,17 @@ export const computeRemainingStock = (
   return Math.max(0, baseStock - sold);
 };
 
+export const resolveItemMaxStock = (
+  item: { productId: string; variantId?: string; maxStock?: number },
+  catalog: { _id?: string; stock?: { trackInventory?: boolean; quantity?: number | null; inStock?: boolean } | null; variants?: { _id?: string; stock?: { trackQuantity?: boolean; quantity?: number | null; inStock?: boolean } | null }[] }[]
+): number => {
+  if (item.maxStock !== undefined) return item.maxStock;
+  const prod = catalog.find((p) => p._id === item.productId);
+  if (!prod) return 10;
+  const variant = item.variantId ? prod.variants?.find((v) => v._id === item.variantId) : undefined;
+  return resolveBaseStock(prod.stock, variant?.stock);
+};
+
 export const getInCartQuantity = (
   items: { productId: string; variantId?: string; quantity: number }[],
   productId: string,

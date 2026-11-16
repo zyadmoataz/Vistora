@@ -91,7 +91,7 @@ export default function Add({
               addToast("Stock Limit Reached", "info", `Only ${remainingStock} available — all already in your bag.`);
               return;
             }
-            addToBagSafely(productId, variantId, Math.min(quantity, maxAddable), meta);
+            addToBagSafely(productId, variantId, Math.min(quantity, maxAddable), { ...meta, maxStock: stockNumber });
           }}
         >
           {isLoading ? "Adding to Bag..." : remainingStock < 1 ? "Out of Stock" : "Add to Shopping Bag"}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSessionSync } from "@/hooks/useSessionSync";
 import { buildLoginHref } from "@/lib/securityHelpers";
@@ -20,17 +20,27 @@ const NAV_LINKS = [
 
 export default function Menu() {
   const [open, setOpen] = useState(false);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const triggerBtnRef = useRef<HTMLButtonElement>(null);
+  const wasOpenRef = useRef(false);
   const pathname = usePathname();
   const { wixClient, isLoggedIn, user, counter, wishlistItems, logoutUser, openAuthPage } = useSessionSync();
 
   useEffect(() => { setOpen(false); }, [pathname]);
 
   useEffect(() => {
-    if (!open) return;
-    document.body.style.overflow = "hidden";
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("keydown", onEsc);
-    return () => { document.body.style.overflow = ""; document.removeEventListener("keydown", onEsc); };
+    if (open) {
+      wasOpenRef.current = true;
+      document.body.style.overflow = "hidden";
+      closeBtnRef.current?.focus();
+      const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+      document.addEventListener("keydown", onEsc);
+      return () => { document.body.style.overflow = ""; document.removeEventListener("keydown", onEsc); };
+    }
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerBtnRef.current?.focus();
+    }
   }, [open]);
 
   const drawer = open && typeof document !== "undefined" ? createPortal(
@@ -40,7 +50,7 @@ export default function Menu() {
         <div className="flex flex-col gap-5">
           <div className="flex items-center justify-between pb-3 border-b border-white/15">
             <span className="text-base font-extrabold tracking-widest uppercase">Vistora Atelier</span>
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close navigation menu" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <button ref={closeBtnRef} type="button" onClick={() => setOpen(false)} aria-label="Close navigation menu" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
               <CloseIcon className="w-5 h-5" />
             </button>
           </div>
@@ -103,7 +113,7 @@ export default function Menu() {
       ) : (
         <Link href={buildLoginHref(pathname)} onClick={(e) => { e.preventDefault(); openAuthPage("login", pathname); }} className="px-3.5 py-2 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 transition-colors">Log In</Link>
       )}
-      <button type="button" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} onClick={() => setOpen((prev) => !prev)} className="p-2.5 rounded-full hover:bg-slate-100 text-navy-900 transition-colors">
+      <button ref={triggerBtnRef} type="button" aria-label={open ? "Close navigation menu" : "Open navigation menu"} aria-expanded={open} onClick={() => setOpen((prev) => !prev)} className="p-2.5 rounded-full hover:bg-slate-100 text-navy-900 transition-colors">
         {open ? <CloseIcon className="w-5 h-5" /> : <MenuIcon className="w-5 h-5" />}
       </button>
       {drawer}

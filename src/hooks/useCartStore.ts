@@ -1,14 +1,13 @@
 import { create } from "zustand";
 import { WixClient } from "@/context/wixContext";
 import { DEFAULT_VARIANT_ID, ENV } from "@/lib/env";
-import { FALLBACK_PRODUCTS } from "@/lib/fallbackProducts";
-import { EXTRA_FALLBACK_PRODUCTS } from "@/lib/fallbackProductsExtra";
+import { ALL_FALLBACK_PRODUCTS } from "@/lib/wixProductNormalizer";
 import { buildCatalogReferenceOptions, CartItemMeta, computeCartTotals, countRawWixProductQuantity, countRemoteProductQuantity, hasRemoteWixCart, isRemoteWixLineItemId, loadLocalCart, mapWixLineItems, mergeLocalCartLine, mergeRemoteAndLocalItems, NormalizedCart, NormalizedLineItem, saveLocalCart, setRemoteWixCart } from "@/lib/cartHelpers";
+import { computeRemainingStock, resolveItemMaxStock, useInventoryStore } from "./useInventoryStore";
 import { useToastStore } from "./useToastStore";
 
 export type { CartItemMeta, NormalizedCart, NormalizedLineItem };
 
-const LOCAL_CATALOG = [...FALLBACK_PRODUCTS, ...EXTRA_FALLBACK_PRODUCTS];
 const EMPTY_CART: NormalizedCart = { lineItems: [], subtotal: { amount: "0.00" } };
 let inFlightSyncKey: string | null = null;
 const syncedThisLoad = new Set<string>();
@@ -93,11 +92,11 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
     }
 
-    const catalogItem = LOCAL_CATALOG.find((p) => p._id === productId);
+    const catalogItem = ALL_FALLBACK_PRODUCTS.find((p) => p._id === productId);
     const itemName = meta?.name || catalogItem?.name || "Vistora Essential";
     const itemPrice = meta?.price ?? catalogItem?.price?.discountedPrice ?? catalogItem?.price?.price ?? 120;
     const itemImage = meta?.image || catalogItem?.media?.mainMedia?.image?.url || "/product.png";
-    const currentItems = mergeLocalCartLine(get().cart.lineItems, { productId, variantId, quantity, name: itemName, price: itemPrice, image: itemImage, slug: meta?.slug || catalogItem?.slug });
+    const currentItems = mergeLocalCartLine(get().cart.lineItems, { productId, variantId, quantity, name: itemName, price: itemPrice, image: itemImage, slug: meta?.slug || catalogItem?.slug, maxStock: meta?.maxStock });
 
     saveLocalCart(currentItems, emailKey);
     set({ ...computeCartTotals(currentItems), activeEmail: emailKey, isLoading: false });
@@ -107,17 +106,20 @@ export const useCartStore = create<CartState>((set, get) => ({
   updateQuantity: (itemId, delta, wixClient) => {
     const target = get().cart.lineItems.find((i) => i._id === itemId);
     if (!target) return;
-    const nextQty = Math.max(0, Math.min(99, target.quantity + delta));
+    const maxAllowed = computeRemainingStock(useInventoryStore.getState().purchased, target.productId, target.variantId, resolveItemMaxStock(target, ALL_FALLBACK_PRODUCTS));
+    if (delta > 0 && target.quantity >= maxAllowed) {
+      useToastStore.getState().addToast("Stock Limit Reached", "info", `Only ${maxAllowed} available in stock.`);
+      return;
+    }
+    const nextQty = delta > 0 ? Math.min(maxAllowed, target.quantity + delta) : Math.max(0, target.quantity + delta);
     const items = get().cart.lineItems.map((i) => (i._id === itemId ? { ...i, quantity: nextQty } : i)).filter((i) => i.quantity > 0);
     if (!items.some((i) => isRemoteWixLineItemId(i._id))) setRemoteWixCart(get().activeEmail, false);
     saveLocalCart(items, get().activeEmail);
     set({ ...computeCartTotals(items) });
     if (wixClient && ENV.IS_WIX_CONFIGURED && isRemoteWixLineItemId(itemId)) {
-      const req = nextQty === 0 ? wixClient.currentCart.removeLineItemsFromCurrentCart([itemId]) : wixClient.currentCart.updateCurrentCartLineItemQuantity([{ _id: itemId, quantity: nextQty }]);
-      req.catch(() => undefined);
+      (nextQty === 0 ? wixClient.currentCart.removeLineItemsFromCurrentCart([itemId]) : wixClient.currentCart.updateCurrentCartLineItemQuantity([{ _id: itemId, quantity: nextQty }])).catch(() => undefined);
     }
   },
-
   removeItem: async (wixClient, itemId) => {
     set({ isLoading: true });
     try {

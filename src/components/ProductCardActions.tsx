@@ -79,6 +79,7 @@ export default function ProductCardActions({
           image: imageUrl,
           slug,
           options,
+          maxStock: stockNumber,
         });
       }}
       className="w-max rounded-full ring-1 ring-slate-300 py-2 px-4 text-navy-950 font-semibold text-xs hover:bg-brand-600 hover:text-white hover:ring-brand-600 transition-all active:scale-95 disabled:opacity-50"

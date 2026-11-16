@@ -31,8 +31,8 @@ src/
 ├── app/            # Next.js 14 App Router pages, metadata layouts, icon.svg, manifest, sitemap, robots
 ├── components/     # Feature UI & shared primitives under components/ui/ (Button, Badge, Input, CustomSelect, Icons)
 ├── context/        # Wix SDK client provider (client OAuth token hydration)
-├── hooks/          # Zustand stores (useAuthStore, useCartStore, useWishlistStore, useToastStore) & shared hooks
-├── lib/            # Pure domain & security helpers (securityHelpers, sanitizeHtml, checkoutHelper, cartHelpers, env, logger)
+├── hooks/          # Zustand stores (useAuthStore, useCartStore, useInventoryStore, useWishlistStore, useToastStore) & shared hooks
+├── lib/            # Pure domain & security helpers (securityHelpers, sanitizeHtml, checkoutHelper, cartHelpers, wixCartMapper, env, logger)
 ├── services/       # Wix & catalog filtering services (catalogService, catalogFilterHelper, authService)
 └── middleware.ts   # Visitor OAuth token provisioning excluding static assets and SEO metadata routes
 tests/              # TypeScript unit & store integration tests using Node's built-in test runner (node:test)
@@ -84,6 +84,7 @@ cp .env.example .env
 | `NEXT_PUBLIC_WIX_APP_ID` | Yes (Live Wix) | Wix Stores App ID (`@wix/ecom` catalog reference) |
 | `FEATURED_PRODUCTS_CATEGORY_ID` | Optional | Collection ID rendered in the Homepage Featured grid |
 | `NEXT_PUBLIC_DEMO_MODE` | Optional | Defaults to `true`; set to `"false"` in production to disable offline demo login fallback |
+| `NEXT_PUBLIC_SITE_URL` | Optional | Canonical storefront origin used for metadata, sitemap, and `robots.txt` |
 
 ---
 

@@ -3,14 +3,13 @@
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import useWixClient from "@/hooks/useWixClient";
 import { useCartStore } from "@/hooks/useCartStore";
 import { useAuthStore } from "@/hooks/useAuthStore";
-import { useInventoryStore } from "@/hooks/useInventoryStore";
+import { useGuardedCartAction } from "@/hooks/useGuardedCartAction";
 import { useToastStore } from "@/hooks/useToastStore";
 import { resolveCartImageUrl } from "@/lib/cartHelpers";
-import { buildOrderRecord, calculateCheckoutTotal, VALID_PROMO_CODE } from "@/lib/checkoutHelper";
+import { calculateCheckoutTotal, VALID_PROMO_CODE } from "@/lib/checkoutHelper";
 import Button from "@/components/ui/Button";
 import EmptyState from "@/components/ui/EmptyState";
 import CustomSelect from "@/components/ui/CustomSelect";
@@ -23,10 +22,9 @@ const PAYMENT_OPTIONS = [
 
 export default function CartPage() {
   const wixClient = useWixClient();
-  const router = useRouter();
-  const { cart, isLoading, updateQuantity, removeItem, clearCart } = useCartStore();
-  const { isAuthenticated, isHydrated, hydrateAuth, addOrderRecord } = useAuthStore();
-  const recordPurchase = useInventoryStore((s) => s.recordPurchase);
+  const { cart, isLoading, updateQuantity, removeItem } = useCartStore();
+  const { isAuthenticated, isHydrated, hydrateAuth } = useAuthStore();
+  const { completeCheckout } = useGuardedCartAction();
   const { addToast } = useToastStore();
 
   const isLoggedIn = isAuthenticated || wixClient.auth.loggedIn();
@@ -53,13 +51,8 @@ export default function CartPage() {
   const handleCompleteCheckout = () => {
     if (items.length === 0 || !isLoggedIn) return;
     setSubmitting(true);
-    const order = buildOrderRecord(items, finalTotal, paymentMethod);
-    addOrderRecord(order);
-    recordPurchase(items);
-    clearCart(wixClient);
+    completeCheckout(items, finalTotal, paymentMethod);
     setSubmitting(false);
-    addToast("Order Confirmed!", "success", `Reference #${order.orderId}`);
-    router.push(`/success?orderId=${order.orderId}`);
   };
 
   if (!isHydrated) {

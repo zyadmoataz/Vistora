@@ -2,21 +2,16 @@ import { collections, products } from "@wix/stores";
 import { wixClientServer } from "@/lib/wixClientServer";
 import { ALL_PRODUCTS_CATEGORY_ID, ENV } from "@/lib/env";
 import { FALLBACK_COLLECTIONS } from "@/lib/fallbackCategories";
-import { FALLBACK_PRODUCTS } from "@/lib/fallbackProducts";
-import { EXTRA_FALLBACK_PRODUCTS } from "@/lib/fallbackProductsExtra";
-import { normalizeWixProduct } from "@/lib/wixProductNormalizer";
+import { withTimeout } from "@/lib/securityHelpers";
+import { ALL_FALLBACK_PRODUCTS, mergeWithFallbackCatalog, normalizeWixProduct } from "@/lib/wixProductNormalizer";
 import {
   filterAndSortLocalProducts,
   PaginatedProductsResult,
   ProductFilterParams,
 } from "./catalogFilterHelper";
 
+export { ALL_FALLBACK_PRODUCTS };
 export type { PaginatedProductsResult, ProductFilterParams };
-
-export const ALL_FALLBACK_PRODUCTS: products.Product[] = [
-  ...FALLBACK_PRODUCTS,
-  ...EXTRA_FALLBACK_PRODUCTS,
-];
 
 const CACHE_TTL_MS = 1000 * 60 * 5;
 
@@ -36,12 +31,6 @@ const store: CatalogMemoryStore = g.__vistoraCatalogStore ?? {
 };
 g.__vistoraCatalogStore = store;
 
-const withTimeout = <T>(promise: Promise<T>, ms = 450): Promise<T> =>
-  Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("Timeout")), ms)),
-  ]);
-
 const getMergedCatalogPool = async (): Promise<products.Product[]> => {
   if (store.mergedPoolCache && Date.now() - store.mergedPoolCache.ts < CACHE_TTL_MS) {
     return store.mergedPoolCache.data;
@@ -51,9 +40,7 @@ const getMergedCatalogPool = async (): Promise<products.Product[]> => {
       const wixClient = await wixClientServer();
       const res = await withTimeout(wixClient.products.queryProducts().limit(50).find(), 450);
       if (res.items && res.items.length > 0) {
-        const normalizedWix = res.items.map((item, idx) => normalizeWixProduct(item, idx));
-        const seenSlugs = new Set(normalizedWix.map((i) => i.slug));
-        const combined = [...normalizedWix, ...ALL_FALLBACK_PRODUCTS.filter((p) => !seenSlugs.has(p.slug))];
+        const combined = mergeWithFallbackCatalog(res.items);
         store.mergedPoolCache = { data: combined, ts: Date.now() };
         return combined;
       }

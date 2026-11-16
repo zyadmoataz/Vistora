@@ -1,4 +1,11 @@
 import { products } from "@wix/stores";
+import { FALLBACK_PRODUCTS } from "./fallbackProducts";
+import { EXTRA_FALLBACK_PRODUCTS } from "./fallbackProductsExtra";
+
+export const ALL_FALLBACK_PRODUCTS: products.Product[] = [
+  ...FALLBACK_PRODUCTS,
+  ...EXTRA_FALLBACK_PRODUCTS,
+];
 
 const LUXURY_TITLES = [
   "Vistora Sculpted Accent Piece",
@@ -39,4 +46,11 @@ export const normalizeWixProduct = (p: products.Product, idx = 0): products.Prod
     name: sanitizeProductTitle(p.name, hash),
     description: sanitizeProductDescription(p.description, hash),
   };
+};
+
+/** Normalizes live Wix products and merges unique curated fallback items without duplicate slugs. */
+export const mergeWithFallbackCatalog = (wixItems: products.Product[]): products.Product[] => {
+  const normalized = wixItems.map((item, idx) => normalizeWixProduct(item, idx));
+  const seenSlugs = new Set(normalized.map((i) => i.slug));
+  return [...normalized, ...ALL_FALLBACK_PRODUCTS.filter((p) => !seenSlugs.has(p.slug))];
 };

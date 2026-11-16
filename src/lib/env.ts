@@ -15,4 +15,5 @@ export const ENV = {
   ).trim(),
   IS_WIX_CONFIGURED: !clientId.startsWith("00000000-") && clientId !== "your-wix-oauth-client-id",
   DEMO_AUTH_ENABLED: process.env.NEXT_PUBLIC_DEMO_MODE !== "false",
+  SITE_URL: (process.env.NEXT_PUBLIC_SITE_URL || "https://vistora-sage.vercel.app").replace(/\/$/, ""),
 } as const;

@@ -1,3 +1,4 @@
+import { ENV } from "@/lib/env";
 import { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
@@ -7,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/profile", "/cart", "/success"],
     },
-    sitemap: "https://vistora.shop/sitemap.xml",
+    sitemap: `${ENV.SITE_URL}/sitemap.xml`,
   };
 }

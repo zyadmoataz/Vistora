@@ -7,13 +7,10 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { products } from "@wix/stores";
 import useWixClient from "@/hooks/useWixClient";
 import { ENV } from "@/lib/env";
-import { FALLBACK_PRODUCTS } from "@/lib/fallbackProducts";
-import { EXTRA_FALLBACK_PRODUCTS } from "@/lib/fallbackProductsExtra";
-import { normalizeWixProduct } from "@/lib/wixProductNormalizer";
+import { ALL_FALLBACK_PRODUCTS, mergeWithFallbackCatalog } from "@/lib/wixProductNormalizer";
 import { filterProductsByQuery } from "@/services/catalogFilterHelper";
 import { CloseIcon, SearchIcon } from "./ui/Icons";
 
-const INITIAL_POOL: products.Product[] = [...FALLBACK_PRODUCTS, ...EXTRA_FALLBACK_PRODUCTS];
 let cachedSearchPool: products.Product[] | null = null;
 let inFlightSearchFetch: Promise<products.Product[]> | null = null;
 
@@ -25,7 +22,7 @@ export default function SearchBar({ onSearchDone }: { onSearchDone?: () => void 
 
   const [query, setQuery] = useState(searchParams.get("name") || "");
   const [isOpen, setIsOpen] = useState(false);
-  const [catalogPool, setCatalogPool] = useState<products.Product[]>(() => cachedSearchPool || INITIAL_POOL);
+  const [catalogPool, setCatalogPool] = useState<products.Product[]>(() => cachedSearchPool || ALL_FALLBACK_PRODUCTS);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(searchParams.get("name") || ""); }, [searchParams]);
@@ -35,13 +32,11 @@ export default function SearchBar({ onSearchDone }: { onSearchDone?: () => void 
     if (cachedSearchPool) { setCatalogPool(cachedSearchPool); return; }
     if (!inFlightSearchFetch) {
       inFlightSearchFetch = wixClient.products.queryProducts().limit(30).find().then((res) => {
-        if (!res.items?.length) return INITIAL_POOL;
-        const normalized = res.items.map((item, idx) => normalizeWixProduct(item, idx));
-        const slugs = new Set(normalized.map((i) => i.slug));
-        const merged = [...normalized, ...INITIAL_POOL.filter((p) => !slugs.has(p.slug))];
+        if (!res.items?.length) return ALL_FALLBACK_PRODUCTS;
+        const merged = mergeWithFallbackCatalog(res.items);
         cachedSearchPool = merged;
         return merged;
-      }).catch(() => INITIAL_POOL);
+      }).catch(() => ALL_FALLBACK_PRODUCTS);
     }
     inFlightSearchFetch.then(setCatalogPool);
   };
