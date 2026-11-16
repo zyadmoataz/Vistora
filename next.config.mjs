@@ -1,13 +1,14 @@
 const isProd = process.env.NODE_ENV === "production";
+const isVercel = process.env.VERCEL === "1";
 
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https://images.pexels.com https://pexels.com https://images.unsplash.com https://static.wixstatic.com",
-  "font-src 'self' data:",
-  "connect-src 'self' https://www.wixapis.com https://*.wix.com https://*.wixapis.com https://*.wixstudio.com",
-  "frame-src 'self' https://*.wix.com https://*.wixsite.com https://*.wixstudio.com",
+  `script-src 'self' 'unsafe-inline'${isProd ? "" : " 'unsafe-eval'"}${isVercel ? " https://vercel.live" : ""}`,
+  `style-src 'self' 'unsafe-inline'${isVercel ? " https://vercel.live" : ""}`,
+  `img-src 'self' data: https://images.pexels.com https://pexels.com https://images.unsplash.com https://static.wixstatic.com${isVercel ? " https://vercel.live https://vercel.com" : ""}`,
+  `font-src 'self' data:${isVercel ? " https://vercel.live https://assets.vercel.com" : ""}`,
+  `connect-src 'self' https://www.wixapis.com https://*.wix.com https://*.wixapis.com https://*.wixstudio.com${isVercel ? " https://vercel.live wss://ws-us3.pusher.com" : ""}`,
+  `frame-src 'self' https://*.wix.com https://*.wixsite.com https://*.wixstudio.com${isVercel ? " https://vercel.live" : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
