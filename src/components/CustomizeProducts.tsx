@@ -1,32 +1,38 @@
 "use client";
 
 import { products } from "@wix/stores";
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import Add from "./Add";
 import { CartItemMeta } from "@/hooks/useCartStore";
+import { computeRemainingStock, resolveBaseStock, useInventoryStore } from "@/hooks/useInventoryStore";
 import { DEFAULT_VARIANT_ID } from "@/lib/env";
 
-const isVariantAvailable = (variant: products.Variant): boolean => {
-  if (!variant.stock) return true;
-  if (variant.stock.trackQuantity === false) return Boolean(variant.stock.inStock);
-  return Boolean(
-    variant.stock.inStock && (variant.stock.quantity == null || variant.stock.quantity > 0)
-  );
+const isVariantAvailable = (
+  productId: string,
+  variant: products.Variant,
+  purchased: Record<string, number>
+): boolean => {
+  const base = resolveBaseStock(undefined, variant.stock);
+  return computeRemainingStock(purchased, productId, variant._id, base) > 0;
 };
 
 export default function CustomizeProducts({
   productId,
   variants,
   productOptions,
+  fallbackStock = 10,
   meta,
 }: {
   productId: string;
   variants: products.Variant[];
   productOptions: products.ProductOption[];
+  fallbackStock?: number;
   meta?: CartItemMeta & { slug?: string };
 }) {
+  const purchased = useInventoryStore((s) => s.purchased);
+
   const [selectOptions, setSelectOptions] = useState<{ [key: string]: string }>(() => {
-    const firstValid = variants.find((v) => isVariantAvailable(v) && v.choices);
+    const firstValid = variants.find((v) => isVariantAvailable(productId, v, {}) && v.choices);
     if (firstValid?.choices) return { ...firstValid.choices };
     const defaults: { [key: string]: string } = {};
     productOptions.forEach((opt) => {
@@ -37,32 +43,25 @@ export default function CustomizeProducts({
     return defaults;
   });
 
-  const [selectedVariant, setSelectedVariant] = useState<products.Variant>();
-
-  useEffect(() => {
-    const variant = variants.find((v) => {
-      if (!v.choices) return false;
-      return Object.entries(selectOptions).every(([k, val]) => v.choices![k] === val);
-    });
-    setSelectedVariant(variant);
-  }, [selectOptions, variants]);
+  const selectedVariant = useMemo(
+    () =>
+      variants.find(
+        (v) => Boolean(v.choices) && Object.entries(selectOptions).every(([k, val]) => v.choices![k] === val)
+      ),
+    [selectOptions, variants]
+  );
 
   const isChoiceInStock = (choices: { [key: string]: string }) => {
-    if (variants.length === 0) return true;
-    return variants.some((v) => {
-      if (!v.choices) return false;
-      return (
+    if (variants.length === 0) return computeRemainingStock(purchased, productId, DEFAULT_VARIANT_ID, fallbackStock) > 0;
+    return variants.some(
+      (v) =>
+        Boolean(v.choices) &&
         Object.entries(choices).every(([k, val]) => v.choices![k] === val) &&
-        isVariantAvailable(v)
-      );
-    });
+        isVariantAvailable(productId, v, purchased)
+    );
   };
 
-  const effectiveStock = selectedVariant
-    ? isVariantAvailable(selectedVariant)
-      ? selectedVariant.stock?.quantity ?? 10
-      : 0
-    : 10;
+  const baseVariantStock = selectedVariant ? resolveBaseStock(undefined, selectedVariant.stock) : fallbackStock;
 
   return (
     <div className="flex flex-col gap-6">
@@ -125,8 +124,8 @@ export default function CustomizeProducts({
       <Add
         productId={productId}
         variantId={selectedVariant?._id || DEFAULT_VARIANT_ID}
-        stockNumber={effectiveStock}
-        meta={meta}
+        stockNumber={baseVariantStock}
+        meta={{ ...meta, options: selectOptions }}
       />
     </div>
   );

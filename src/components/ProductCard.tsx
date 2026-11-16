@@ -5,6 +5,7 @@ import { products } from "@wix/stores";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import ProductCardActions from "./ProductCardActions";
 import { resolveDefaultProductSelection } from "@/lib/wixCartMapper";
+import { resolveBaseStock } from "@/hooks/useInventoryStore";
 import Badge from "./ui/Badge";
 
 export default function ProductCard({ product }: { product: products.Product }) {
@@ -21,6 +22,10 @@ export default function ProductCard({ product }: { product: products.Product }) 
     product.additionalInfoSections?.find((s) => s.title === "shortDesc")?.description ||
     product.description ||
     "";
+
+  const selection = resolveDefaultProductSelection(product);
+  const pickedVariant = product.variants?.find((v) => v._id === selection.variantId);
+  const cardStock = resolveBaseStock(product.stock, pickedVariant?.stock);
 
   return (
     <Link href={`/${product.slug}`} className="group flex flex-col gap-3.5">
@@ -84,8 +89,9 @@ export default function ProductCard({ product }: { product: products.Product }) 
           name={product.name || "Vistora Piece"}
           price={finalPrice}
           imageUrl={primaryImage}
-          variantId={resolveDefaultProductSelection(product).variantId}
-          options={resolveDefaultProductSelection(product).options}
+          variantId={selection.variantId}
+          options={selection.options}
+          stockNumber={cardStock}
           mode="add-button"
         />
         <span className="text-xs font-semibold text-slate-600 group-hover:text-brand-600 transition-colors">

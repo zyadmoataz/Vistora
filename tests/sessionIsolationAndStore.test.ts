@@ -266,3 +266,46 @@ test("useCartStore prevents zero-counter phantom toasts, isolates item names, an
     mutableEnv.IS_WIX_CONFIGURED = prevConfigured;
   }
 });
+
+
+const {
+  computeRemainingStock,
+  getInCartQuantity,
+  resolveBaseStock,
+  useInventoryStore,
+} = require("../src/hooks/useInventoryStore") as typeof import("../src/hooks/useInventoryStore");
+
+test("useInventoryStore deducts purchased quantities per variant and persists across rehydration", () => {
+  mockLocalStorage.clear();
+  useInventoryStore.setState({ purchased: {}, hydrated: false });
+  useInventoryStore.getState().hydrateInventory();
+
+  assert.equal(resolveBaseStock(undefined, { trackQuantity: true, quantity: 8, inStock: true }), 8);
+  assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-0-249", 8), 8);
+
+  useInventoryStore.getState().recordPurchase([
+    { _id: "prod-vistora-001__var-0-0-249", productId: "prod-vistora-001", variantId: "var-0-0-249", quantity: 2 },
+  ]);
+
+  assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-0-249", 8), 6);
+  assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-1-249", 8), 8);
+  assert.equal(
+    getInCartQuantity(
+      [{ productId: "prod-vistora-001", variantId: "var-0-0-249", quantity: 3 }],
+      "prod-vistora-001",
+      "var-0-0-249"
+    ),
+    3
+  );
+
+  // Verify persistence survives fresh store rehydration
+  useInventoryStore.setState({ purchased: {}, hydrated: false });
+  useInventoryStore.getState().hydrateInventory();
+  assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-0-249", 8), 6);
+
+  // Exceeding stock clamps safely to 0
+  useInventoryStore.getState().recordPurchase([
+    { _id: "prod-vistora-001__var-0-0-249", productId: "prod-vistora-001", variantId: "var-0-0-249", quantity: 10 },
+  ]);
+  assert.equal(computeRemainingStock(useInventoryStore.getState().purchased, "prod-vistora-001", "var-0-0-249", 8), 0);
+});

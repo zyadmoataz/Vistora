@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCartStore } from "@/hooks/useCartStore";
 import { useAuthStore } from "@/hooks/useAuthStore";
+import { useInventoryStore } from "@/hooks/useInventoryStore";
 import { useToastStore } from "@/hooks/useToastStore";
 import { resolveCartImageUrl } from "@/lib/cartHelpers";
 import { buildOrderRecord } from "@/lib/checkoutHelper";
@@ -18,6 +19,7 @@ export default function CartModal({ onClose }: { onClose?: () => void }) {
   const router = useRouter();
   const { cart, isLoading, removeItem, updateQuantity, clearCart } = useCartStore();
   const { isAuthenticated, addOrderRecord } = useAuthStore();
+  const recordPurchase = useInventoryStore((s) => s.recordPurchase);
   const { addToast } = useToastStore();
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,6 +38,7 @@ export default function CartModal({ onClose }: { onClose?: () => void }) {
     const total = parseFloat(cart.subtotal?.amount || "0");
     const order = buildOrderRecord(items, total, "Express Checkout");
     addOrderRecord(order);
+    recordPurchase(items);
     clearCart(wixClient);
     setSubmitting(false);
     addToast("Order Confirmed!", "success", `Order #${order.orderId} placed.`);

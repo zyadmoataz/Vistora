@@ -26,6 +26,7 @@
     "src/services/catalogFilterHelper.ts",
     "src/hooks/useAuthStore.ts",
     "src/hooks/useCartStore.ts",
+    "src/hooks/useInventoryStore.ts",
     "src/hooks/useWishlistStore.ts"
   ]
 }

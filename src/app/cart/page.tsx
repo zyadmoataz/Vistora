@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import useWixClient from "@/hooks/useWixClient";
 import { useCartStore } from "@/hooks/useCartStore";
 import { useAuthStore } from "@/hooks/useAuthStore";
+import { useInventoryStore } from "@/hooks/useInventoryStore";
 import { useToastStore } from "@/hooks/useToastStore";
 import { resolveCartImageUrl } from "@/lib/cartHelpers";
 import { buildOrderRecord, calculateCheckoutTotal, VALID_PROMO_CODE } from "@/lib/checkoutHelper";
@@ -25,6 +26,7 @@ export default function CartPage() {
   const router = useRouter();
   const { cart, isLoading, updateQuantity, removeItem, clearCart } = useCartStore();
   const { isAuthenticated, isHydrated, hydrateAuth, addOrderRecord } = useAuthStore();
+  const recordPurchase = useInventoryStore((s) => s.recordPurchase);
   const { addToast } = useToastStore();
 
   const isLoggedIn = isAuthenticated || wixClient.auth.loggedIn();
@@ -36,10 +38,7 @@ export default function CartPage() {
   useEffect(() => { hydrateAuth(wixClient); }, [hydrateAuth, wixClient]);
 
   const items = cart?.lineItems || [];
-  const { rawSubtotal, discountAmount, finalTotal } = calculateCheckoutTotal(
-    parseFloat(cart?.subtotal?.amount || "0"),
-    discountApplied
-  );
+  const { rawSubtotal, discountAmount, finalTotal } = calculateCheckoutTotal(parseFloat(cart?.subtotal?.amount || "0"), discountApplied);
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +55,7 @@ export default function CartPage() {
     setSubmitting(true);
     const order = buildOrderRecord(items, finalTotal, paymentMethod);
     addOrderRecord(order);
+    recordPurchase(items);
     clearCart(wixClient);
     setSubmitting(false);
     addToast("Order Confirmed!", "success", `Reference #${order.orderId}`);

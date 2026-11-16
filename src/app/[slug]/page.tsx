@@ -8,6 +8,7 @@ import Badge from "@/components/ui/Badge";
 import { ProductGridSkeleton } from "@/components/ui/Skeleton";
 import { RotateCcwIcon, ShieldCheckIcon, TruckIcon } from "@/components/ui/Icons";
 import { ALL_PRODUCTS_CATEGORY_ID, DEFAULT_VARIANT_ID } from "@/lib/env";
+import { resolveBaseStock } from "@/hooks/useInventoryStore";
 import { sanitizeHtml } from "@/lib/sanitizeHtml";
 import { sanitizePlainText, serializeJsonLd } from "@/lib/securityHelpers";
 import { ALL_FALLBACK_PRODUCTS, getProductBySlugSafe } from "@/services/catalogService";
@@ -42,10 +43,7 @@ export default async function SinglePage({ params }: { params: { slug: string } 
   const hasDiscount = finalPrice < basePrice && basePrice > 0;
   const primaryImage = product.media?.mainMedia?.image?.url || "/product.png";
 
-  const defaultStock =
-    product.stock?.trackInventory === false
-      ? product.stock?.inStock ? 10 : 0
-      : product.stock?.quantity ?? (product.stock?.inStock ? 10 : 0);
+  const defaultStock = resolveBaseStock(product.stock);
 
   const itemMeta = { name: product.name || "Vistora Essential", price: finalPrice, image: primaryImage, slug: product.slug || params.slug };
 
@@ -105,7 +103,7 @@ export default async function SinglePage({ params }: { params: { slug: string } 
           <div className="h-px bg-slate-200/80" />
 
           {product.variants?.length && product.productOptions?.length ? (
-            <CustomizeProducts productId={product._id!} variants={product.variants} productOptions={product.productOptions} meta={itemMeta} />
+            <CustomizeProducts productId={product._id!} variants={product.variants} productOptions={product.productOptions} fallbackStock={defaultStock} meta={itemMeta} />
           ) : (
             <Add productId={product._id!} variantId={DEFAULT_VARIANT_ID} stockNumber={defaultStock} meta={itemMeta} />
           )}
