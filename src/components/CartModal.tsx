@@ -1,278 +1,118 @@
-// "use client"
-
-// // import useWixClient from "@/hooks/useWixClient";
-// import Image from "next/image";
-// // import { useEffect } from "react";
-// import { useCartStore } from './../hooks/useCartStore';
-// import{media as wixMedia} from "@wix/sdk"
-// import useWixClient from "@/hooks/useWixClient";
-// import { currentCart } from "@wix/ecom";
-
-// // to use the cart modal we will install: npm i @wix/ecom
-
-// export default function CartModal() {
-//     // temp
-//     // const cartItems = true;
-
-//     const wixClient =useWixClient();
-
-//     const {cart, isLoading,removeItem} =useCartStore();
-
-//     // function for the checkout and payment
-//     const handleCheckout = async ()=>{
-//       try{
-//         // this will us the id and using this id we're going to create redirect session
-//         // so we need to install redirect session > npm i @wix/redirects
-//         const checkout =  await wixClient.currentCart.createCheckoutFromCurrentCart({
-//           // our channel type is web
-//           channelType:currentCart.ChannelType.WEB
-//         });
-//         const {redirectSession} = await wixClient.redirects.createRedirectSession({
-//           ecomCheckout:{
-//             checkoutId:checkout.checkoutId
-//           },
-//           callbacks:{
-//             // localhost:3000
-//             postFlowUrl:window.location.origin,
-//             thankYouPageUrl:`${window.location.origin}/success`
-//           }
-//         });
-
-//         if(redirectSession?.fullUrl){
-//           window.location.href = redirectSession.fullUrl
-//         }
-
-//       }catch(err)
-//       { 
-//         console.log(err)
-//       }
-//     }
-
-//     // return a promise so use it inside use effect
-//     // we will run this also in the nav icons to update the number
-//     // useEffect(()=>{
-//     //   // const getCart = async () =>{
-//     //   //   const response = await wixClient.currentCart.getCurrentCart();
-//     //   //   console.log(response);
-//     //   // }
-//     //   getCart(wixClient);
-//     // },[wixClient,getCart])
-
-//     // console.log(cart);
-
-//   return (
-//     <div className="w-max absolute p-4 rounded-md shadow-[0_3px_10px_rgb(0,0,0,0.2)] bg-white top-12 right-0 z-20 flex flex-col gap-6"> 
-//       {
-//       !cart.lineItems? (
-//         <div className='flex items-center justify-center h-32'>
-//           Your cart is empty
-//         </div>
-//       ) : 
-//       (<>
-//         {/* Title */}
-//         <h2 className="text-xl">Shopping  Cart</h2>
-
-//         {/* List */}
-//         <div className="flex flex-col gap-8">
-//           {/* ITEM */}
-//           { 
-//             cart.lineItems.map((item)=>(
-//             <div className=" flex gap-4" key={item._id}>
-//                 {/* image comes in like this > image: "wix:image://v1/22e53e_efc1552d8050407f82ea158302d0debd~mv2.jpg/22e53e_efc1552d8050407f82ea158302d0debd~mv2.jpg#originWidth=4000&originHeight=4000" */}
-//                 {/* the image needs to import wix media function to transform this to image url */}
-//                 {/* <Image width={72} height={96} src='https://images.pexels.com/photos/1021693/pexels-photo-1021693.jpeg?auto=compress&cs=tinysrgb&w=800' alt='' className="object-cover rounded-md" /> */}
-//                 {/* pass image then width and height and we need no tranform option so make it empty object */}
-//                {item.image && <Image width={72} height={96} src={wixMedia.getScaledToFillImageUrl(item.image,72,96,{})} alt='' className="object-cover rounded-md" />}
-//                 <div>
-//                     {/* Top Section */}
-//                     <div className="flex flex-col justify-between w-full">
-//                         {/* Title*/}
-//                         <div className="flex justify-between items-center gap-8">
-//                             {/* original title of the product name */}
-//                             <h3 className="font-semibold">{item.productName?.original}</h3>
-//                             <div className="p-1 bg-gray-50 rounded-sm flex items-center gap-2">
-//                               {item.quantity && item.quantity>1 && <div className="text-sm text-green-500">{item.quantity} x</div>} 
-//                               ${item.price?.amount}
-//                             </div>
-//                         </div>
-//                         {/* Description */}
-//                         <div className="text-sm text-gray-500 ">{item.availability?.status}</div>
-//                     </div>
-//                     {/* Bottom Section */}
-//                     <div className="flex justify-between text-sm">
-//                       <span className="text-gray-500">Qty: {item.quantity}</span>
-//                       <span className="text-blue-500" style={{cursor:isLoading?"not-allowed":"pointer"}} onClick={()=>removeItem(wixClient, item._id!)}>Remove</span>
-//                     </div>
-//                 </div>
-//             </div>
-//             ))
-//           }
-//         </div>
-
-//          {/* BOTTOM */}
-//          <div className="">
-//             <div className="flex items-center justify-between font-semibold">
-//               <span className="">Subtotal</span>
-//               <span className="">${cart?.subtotal.amount}</span>
-//             </div>
-
-//             <p className="text-gray-500 text-sm mt-2 mb-4">Shipping and taxes calculated at the checkout.</p>
-
-//             <div className="flex justify-between text-sm">
-//               <button className="rounded-md py-3 px-4 ring-1 ring-gray-300">View Cart</button>
-//               <button className="rounded-md py-3 px-4 bg-black text-white disabled:cursor-not-allowed disabled:opacity-75" disabled={isLoading} onClick={handleCheckout}>Checkout</button>
-//             </div>
-//          </div>
-//        </>
-//       )}
-//     </div>
-//   )
-// }
-
-"use client"
+"use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useCartStore } from './../hooks/useCartStore';
-import { media as wixMedia } from "@wix/sdk"
+import { useCartStore } from "@/hooks/useCartStore";
+import { useAuthStore } from "@/hooks/useAuthStore";
+import { useToastStore } from "@/hooks/useToastStore";
+import { resolveCartImageUrl } from "@/lib/cartHelpers";
+import { buildOrderRecord } from "@/lib/checkoutHelper";
 import useWixClient from "@/hooks/useWixClient";
-import { currentCart } from "@wix/ecom";
+import Button from "./ui/Button";
+import { CloseIcon } from "./ui/Icons";
 
-export default function CartModal() {
-    const wixClient = useWixClient();
-    const { cart, isLoading, removeItem } = useCartStore();
-    const [orderSubmitted, setOrderSubmitted] = useState(false);
-    const [orderId, setOrderId] = useState<string | null>(null);
+export default function CartModal({ onClose }: { onClose?: () => void }) {
+  const wixClient = useWixClient();
+  const router = useRouter();
+  const { cart, isLoading, removeItem, updateQuantity, clearCart } = useCartStore();
+  const { isAuthenticated, addOrderRecord } = useAuthStore();
+  const { addToast } = useToastStore();
+  const [submitting, setSubmitting] = useState(false);
 
-    const handleManualCheckout = async () => {
-      try {
-          // Generate order without Wix checkout
-          const generatedOrderId = `ORD-${Date.now()}`;
-          
-          // Send order to your own backend
-          const response = await fetch('/api/create-order', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                  items: cart.lineItems.map(item => ({
-                      id: item._id,
-                      name: item.productName?.original,
-                      quantity: item.quantity,
-                      price: item.price?.amount
-                  })),
-                  total: cart.subtotal.amount,
-                  orderId: generatedOrderId
-              }),
-          });
-  
-          if (!response.ok) {
-              throw new Error('Order submission failed');
-          }
-  
-          setOrderId(generatedOrderId);
-          setOrderSubmitted(true);
-          
-      } catch (err) {
-          console.error("Order creation failed:", err);
-      }
-  };    
+  const items = cart?.lineItems || [];
 
-    if (!cart.lineItems) {
-        return (
-            <div className="w-max absolute p-4 rounded-md shadow-[0_3px_10px_rgb(0,0,0,0.2)] bg-white top-12 right-0 z-20 flex flex-col gap-6">
-                <div className='flex items-center justify-center h-32'>
-                    Your cart is empty
-                </div>
-            </div>
-        );
+  const handleExpressCheckout = () => {
+    if (items.length === 0) return;
+    if (!isAuthenticated && !wixClient.auth.loggedIn()) {
+      addToast("Sign in required", "info", "Please sign in before placing an order.");
+      onClose?.();
+      router.push("/login?redirect=/cart");
+      return;
     }
 
-    return (
-        <div className="w-max absolute p-4 rounded-md shadow-[0_3px_10px_rgb(0,0,0,0.2)] bg-white top-12 right-0 z-20 flex flex-col gap-6">
-            {!orderSubmitted ? (
-                <>
-                    <h2 className="text-xl">Shopping Cart</h2>
-                    <div className="flex flex-col gap-8">
-                        {cart.lineItems.map((item) => (
-                            <div className="flex gap-4" key={item._id}>
-                                {item.image && (
-                                    <Image
-                                        width={72}
-                                        height={96}
-                                        src={wixMedia.getScaledToFillImageUrl(item.image, 72, 96, {})}
-                                        alt=''
-                                        className="object-cover rounded-md"
-                                    />
-                                )}
-                                <div>
-                                    <div className="flex flex-col justify-between w-full">
-                                        <div className="flex justify-between items-center gap-8">
-                                            <h3 className="font-semibold">{item.productName?.original}</h3>
-                                            <div className="p-1 bg-gray-50 rounded-sm flex items-center gap-2">
-                                                {item.quantity && item.quantity > 1 && (
-                                                    <div className="text-sm text-green-500">{item.quantity} x</div>
-                                                )}
-                                                ${item.price?.amount}
-                                            </div>
-                                        </div>
-                                        <div className="text-sm text-gray-500">{item.availability?.status}</div>
-                                    </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-gray-500">Qty: {item.quantity}</span>
-                                        <span
-                                            className="text-blue-500"
-                                            style={{ cursor: isLoading ? "not-allowed" : "pointer" }}
-                                            onClick={() => removeItem(wixClient, item._id!)}
-                                        >
-                                            Remove
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div>
-                        <div className="flex items-center justify-between font-semibold">
-                            <span>Subtotal</span>
-                            <span>${cart?.subtotal.amount}</span>
-                        </div>
-                        <p className="text-gray-500 text-sm mt-2 mb-4">
-                            Shipping and taxes calculated at the checkout.
-                        </p>
-                        <div className="flex justify-between text-sm">
-                            <button className="rounded-md py-3 px-4 ring-1 ring-gray-300">
-                                View Cart
-                            </button>
-                            <button
-                                className="rounded-md py-3 px-4 bg-black text-white disabled:cursor-not-allowed disabled:opacity-75"
-                                disabled={isLoading}
-                                onClick={handleManualCheckout}
-                            >
-                                Place Order
-                            </button>
-                        </div>
-                    </div>
-                </>
-            ) : (
-                <div className="bg-gray-100 p-4 rounded">
-                    <h3 className="font-bold text-lg mb-2">Order #{orderId} Received!</h3>
-                    <p className="mb-4">Please complete your payment using one of these methods:</p>
-                    
-                    <div className="space-y-2">
-                        <p><strong>Bank Transfer:</strong></p>
-                        <p>Bank Name: Your Bank</p>
-                        <p>Account Number: 123456789</p>
-                        <p>Reference: Order #{orderId}</p>
-                        
-                        <p className="mt-4"><strong>Cash Payment:</strong></p>
-                        <p>Visit our store at [Your Address]</p>
-                        
-                        <p className="mt-4">After payment, we'll verify and process your order.</p>
-                    </div>
-                </div>
-            )}
+    setSubmitting(true);
+    const total = parseFloat(cart.subtotal?.amount || "0");
+    const order = buildOrderRecord(items, total, "Express Checkout");
+    addOrderRecord(order);
+    clearCart();
+    setSubmitting(false);
+    addToast("Order Confirmed!", "success", `Order #${order.orderId} placed.`);
+    onClose?.();
+    router.push(`/success?orderId=${order.orderId}`);
+  };
+
+  return (
+    <div role="dialog" aria-label="Shopping Bag" className="w-[340px] sm:w-[400px] absolute p-6 rounded-3xl shadow-elevated bg-white border border-slate-200 top-14 right-0 z-40 flex flex-col gap-5 animate-fade-in-up">
+      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h2 className="text-lg font-bold text-navy-950">Shopping Bag</h2>
+        {onClose && (
+          <button type="button" onClick={onClose} aria-label="Close cart modal" className="text-slate-600 hover:text-navy-950 p-1 rounded-full hover:bg-slate-100 transition-colors">
+            <CloseIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 text-center gap-3">
+          <p className="text-slate-600 text-sm">Your shopping bag is currently empty.</p>
+          <Link href="/list" onClick={onClose} className="text-xs font-semibold px-4 py-2 rounded-full bg-navy-950 text-white hover:bg-brand-600 transition-colors">
+            Explore Collection
+          </Link>
         </div>
-    );
+      ) : (
+        <>
+          <div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto pr-1">
+            {items.map((item) => (
+              <div className="flex gap-3.5 items-start" key={item._id}>
+                <Image width={68} height={88} src={resolveCartImageUrl(item.image)} alt={item.productName?.original || "Product"} className="object-cover rounded-xl bg-slate-100 shrink-0 w-[68px] h-[88px]" />
+                <div className="flex flex-col justify-between flex-1 min-w-0 h-[88px]">
+                  <div>
+                    <div className="flex justify-between items-start gap-2">
+                      {item.slug ? (
+                        <Link href={`/${item.slug}`} onClick={onClose} className="font-semibold text-sm text-navy-950 hover:text-brand-600 truncate">
+                          {item.productName?.original}
+                        </Link>
+                      ) : (
+                        <h3 className="font-semibold text-sm text-navy-950 truncate">{item.productName?.original}</h3>
+                      )}
+                      <span className="text-sm font-bold text-navy-950 shrink-0">${item.price?.amount}</span>
+                    </div>
+                    <p className="text-xs text-emerald-700 font-medium mt-0.5">{item.availability?.status || "In Stock"}</p>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="inline-flex items-center gap-2 bg-slate-100 rounded-full px-2.5 py-1">
+                      <button type="button" aria-label="Decrease quantity" onClick={() => updateQuantity(item._id, -1)} className="font-bold text-navy-900 hover:text-brand-600 px-1">-</button>
+                      <span className="font-semibold text-navy-950">{item.quantity}</span>
+                      <button type="button" aria-label="Increase quantity" onClick={() => updateQuantity(item._id, 1)} className="font-bold text-navy-900 hover:text-brand-600 px-1">+</button>
+                    </div>
+                    <button type="button" disabled={isLoading} onClick={() => removeItem(wixClient, item._id)} className="text-slate-600 hover:text-red-700 font-medium transition-colors">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between font-bold text-navy-950">
+              <span>Subtotal</span>
+              <span className="text-lg">${cart?.subtotal?.amount || "0.00"}</span>
+            </div>
+            <p className="text-slate-600 text-xs mt-1 mb-4">Complimentary express shipping applied at checkout.</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Link href="/cart" onClick={onClose} className="rounded-full py-2.5 px-4 ring-1 ring-slate-300 text-center font-medium text-navy-900 hover:bg-slate-50 transition-colors">
+                View Bag
+              </Link>
+              <Button size="sm" isLoading={submitting} disabled={isLoading} onClick={handleExpressCheckout}>
+                {submitting ? "Processing..." : "Checkout"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
 }

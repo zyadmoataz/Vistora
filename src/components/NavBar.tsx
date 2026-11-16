@@ -1,51 +1,53 @@
-// Nav Bar is a server component 
-import Link from 'next/link'
-import React from 'react'
-import Menu from './Menu'
-import Image from 'next/image'
-import SearchBar from './SearchBar'
-import dynamic from 'next/dynamic'
-// import NavIcons from './NavIcons'
-// dynamic import
-const NavIcons = dynamic(() => import("./NavIcons"), {ssr:false})  
+import Link from "next/link";
+import React, { Suspense } from "react";
+import BrandLogo from "./ui/BrandLogo";
+import DesktopNavLinks from "./DesktopNavLinks";
+import Menu from "./Menu";
+import SearchBar from "./SearchBar";
+import NavIcons from "./NavIcons";
 
 export default function NavBar() {
   return (
-    <div className='h-[100px] px-4 md:px-8 lg:px-16 xl:px-32 2xl:px-64 relative'>
+    <header className="sticky top-0 z-40 glass-panel transition-all">
+      <div className="bg-navy-950 text-white text-xs py-2 px-4 text-center font-medium tracking-wide">
+        <span>Complimentary Express Global Shipping on Orders Over $150</span>
+        <span className="hidden sm:inline text-brand-300 mx-2">•</span>
+        <Link
+          href="/deals"
+          className="hidden sm:inline text-brand-200 underline hover:text-white ml-1 font-semibold"
+        >
+          Explore Seasonal Archive Up to 35% Off
+        </Link>
+      </div>
+
+      <div className="h-20 container-shell relative">
         {/* MOBILE */}
-        <div className='flex justify-between items-center h-full md:hidden'>
-            <Link href='/'> 
-                <div className='text-2xl tracking-widest cursor-pointer'>
-                    ZYAD
-                </div>
-            </Link>
-            {/* we created a separate menu comonenet as this will be client component */}
+        <div className="flex justify-between items-center h-full md:hidden">
+          <Link href="/" aria-label="Vistora Atelier Home" className="shrink-0">
+            <BrandLogo />
+          </Link>
+          <Suspense fallback={<div className="w-24 h-9" />}>
             <Menu />
+          </Suspense>
         </div>
 
-        {/* BIGGER SCREENS */}
-        <div className='hidden md:flex justify-between items-center h-full gap-8'>
-            {/* LEFT SECTION */}
-            <div className='w-1/3 xl:w-1/2 flex items-center gap-12'>
-                <Link href='/' className='flex items-center gap-3'> 
-                    <div className='text-2xl tracking-widest cursor-pointer'>
-                        <Image width={180} height={180} src='/logo2.png' alt='logo' />
-                    </div>
-                </Link>
-                <div className='hidden xl:flex gap-4'>
-                    <Link href='/'>Homepage</Link>
-                    <Link href='/'>Shop</Link>
-                    <Link href='/'>Deals</Link>
-                    <Link href='/'>About</Link>
-                    <Link href='/'>Contact</Link>
-                </div>
-            </div>
-            {/* RIGHT SECTION */}
-            <div className='w-2/3 xl:w-1/2 flex items-center justify-between gap-8'>
-                <SearchBar />
-                <NavIcons />
-            </div>
+        {/* DESKTOP */}
+        <div className="hidden md:flex justify-between items-center h-full gap-6 lg:gap-8">
+          <div className="flex items-center gap-7 xl:gap-10">
+            <Link href="/" aria-label="Vistora Atelier Home" className="shrink-0">
+              <BrandLogo />
+            </Link>
+            <DesktopNavLinks />
+          </div>
+
+          <div className="flex items-center justify-end gap-4 xl:gap-5 flex-1 max-w-2xl">
+            <Suspense fallback={<div className="flex-1 h-10 bg-slate-100 rounded-full max-w-md" />}>
+              <SearchBar />
+            </Suspense>
+            <NavIcons />
+          </div>
         </div>
-    </div>
-  )
+      </div>
+    </header>
+  );
 }

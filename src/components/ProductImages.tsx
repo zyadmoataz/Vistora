@@ -1,30 +1,78 @@
-"use client"
-import Image from 'next/image'
-import React, { useState } from 'react'
+"use client";
 
-// const images =[
-//     {id:1,url:"https://images.pexels.com/photos/776656/pexels-photo-776656.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1"},
-//     {id:2,url:"https://images.unsplash.com/photo-1741006727915-d25215fdaf04?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"},
-//     {id:3,url:"https://images.unsplash.com/photo-1742626157103-76367e3798bc?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"},
-//     {id:4,url:"https://images.unsplash.com/photo-1700206402761-c37ae8c0af8c?q=80&w=1932&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"},
-// ];
+import Image from "next/image";
+import React, { useState } from "react";
 
-export default function ProductImages({items}:{items:any}) {
-    const [index,setIndex] =useState(0);
+interface MediaItem {
+  _id?: string;
+  image?: { url?: string };
+}
+
+export default function ProductImages({
+  items,
+  productName = "Product image",
+}: {
+  items?: MediaItem[];
+  productName?: string;
+}) {
+  const safeItems: MediaItem[] =
+    Array.isArray(items) && items.length > 0
+      ? items
+      : [{ _id: "fallback-0", image: { url: "/product.png" } }];
+
+  const [index, setIndex] = useState(0);
+  const currentUrl =
+    safeItems[index]?.image?.url || safeItems[0]?.image?.url || "/product.png";
+
   return (
-    <div>
+    <div className="flex flex-col gap-4">
       {/* Main Image */}
-      <div className='h-[500px] relative'>
-        <Image src={items[index].image?.url} sizes="50vw" alt="Image" fill className='object-cover rounded-md'/>  {/* Max size 50 vw */}
+      <div className="h-[440px] sm:h-[540px] relative rounded-3xl overflow-hidden bg-slate-100 border border-slate-100 shadow-soft">
+        <Image
+          src={currentUrl}
+          sizes="(max-width: 1024px) 100vw, 50vw"
+          alt={`${productName} - View ${index + 1}`}
+          fill
+          priority
+          className="object-cover transition-all duration-500"
+        />
+        {safeItems.length > 1 && (
+          <div className="absolute bottom-4 right-4 bg-slate-900/75 backdrop-blur-md text-white text-xs font-semibold px-3 py-1.5 rounded-full">
+            {index + 1} / {safeItems.length}
+          </div>
+        )}
       </div>
-      {/* Small Image */}
-      <div className='flex justify-between gap-4 mt-8'>
-       {items.map((item:any ,i:number)=> (
-         <div className='w-1/4 h-32 relative gap-4 mt-8 cursor-pointer' key={item._id} onClick={()=>setIndex(i)}>
-            <Image src={item.image?.url} sizes="30vw" alt="Image" fill className='object-cover rounded-md'/>
-         </div>
-       ))}
-      </div>
+
+      {/* Thumbnail Strip */}
+      {safeItems.length > 1 && (
+        <div className="grid grid-cols-4 gap-3 sm:gap-4">
+          {safeItems.map((item, i) => {
+            const thumbUrl = item.image?.url || "/product.png";
+            const isSelected = i === index;
+            return (
+              <button
+                type="button"
+                key={item._id || i}
+                onClick={() => setIndex(i)}
+                aria-label={`View image ${i + 1}`}
+                className={`h-24 sm:h-28 relative rounded-2xl overflow-hidden transition-all ${
+                  isSelected
+                    ? "ring-2 ring-brand-600 ring-offset-2 opacity-100"
+                    : "opacity-70 hover:opacity-100"
+                }`}
+              >
+                <Image
+                  src={thumbUrl}
+                  sizes="20vw"
+                  alt={`${productName} thumbnail ${i + 1}`}
+                  fill
+                  className="object-cover"
+                />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
-  )
+  );
 }

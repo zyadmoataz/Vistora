@@ -1,16 +1,17 @@
 {
-  "name": "ecomstarter",
+  "name": "vistora-atelier",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "node -e \"require('fs').rmSync('.test-dist',{recursive:true,force:true})\" && npx tsc -p tsconfig.test.json && node --test .test-dist/tests/*.test.js"
   },
   "dependencies": {
     "@wix/ecom": "^1.0.1071",
-    "@wix/redirects": "^1.0.77",
     "@wix/sdk": "^1.15.17",
     "@wix/stores": "^1.0.415",
     "isomorphic-dompurify": "^2.23.0",

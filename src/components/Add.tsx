@@ -1,71 +1,105 @@
-'use client'
-import { useCartStore } from '@/hooks/useCartStore';
-import useWixClient from '@/hooks/useWixClient';
-import React, { useState } from 'react'
+"use client";
 
-export default function Add({productId,variantId,stockNumber}:{productId:string,variantId:string,stockNumber:number}) {
-  const [quantity, setQuantity] =useState(1);
+import { CartItemMeta } from "@/hooks/useCartStore";
+import { useGuardedCartAction } from "@/hooks/useGuardedCartAction";
+import { useWishlistStore } from "@/hooks/useWishlistStore";
+import React, { useEffect, useState } from "react";
+import Button from "./ui/Button";
+import { HeartIcon } from "./ui/Icons";
 
-  // Temproray
-// const temp=4;
+export default function Add({
+  productId,
+  variantId,
+  stockNumber,
+  meta,
+}: {
+  productId: string;
+  variantId: string;
+  stockNumber: number;
+  meta?: CartItemMeta;
+}) {
+  const [quantity, setQuantity] = useState(1);
+  const { addToBagSafely, isLoading } = useGuardedCartAction();
+  const { items: wishlistItems, toggleItem } = useWishlistStore();
 
-const handleQuantity = (type:"inc" | "dec") => {
-  if(type ==="dec" && quantity >1)
-  {
-    setQuantity (prev => prev-1)
-  }
+  const isSaved = wishlistItems.some((i) => i.id === productId);
 
-  if(type ==="inc" && quantity <stockNumber)
-    {
-      setQuantity (prev => prev+1)
-    }
-}
+  useEffect(() => {
+    setQuantity(1);
+  }, [variantId]);
 
-   const wixClient =useWixClient();
-   const {addItem, isLoading} = useCartStore();
-  
-  //  we need a state mangement hook, as itsa related between the notification number the add to cart and number of items and all of this
-  // so we need to install > npm i zustand instead of redux or react query
-  // we added this in our middleware.ts
-  // const addItem = async ()=>{
-  //   const response = await wixClient.currentCart.addToCurrentCart({
-  //     lineItems:[{
-  //       catalogReference:{
-  //         appId:process.env.NEXT_PUBLIC_WIX_APP_ID!,
-  //         catalogItemId:productId,
-  //         // if we have any variant
-  //         ...(variantId && {options:{variantId} })
-  //       },
-  //       quantity:quantity
-  //     }]
-  //   });
-  //   console.log(response)
-  // }
+  const handleQuantity = (type: "inc" | "dec") => {
+    if (type === "dec" && quantity > 1) setQuantity((prev) => prev - 1);
+    if (type === "inc" && quantity < stockNumber) setQuantity((prev) => prev + 1);
+  };
 
   return (
-    <div className=''>
-      <h4 className='font-medium'>Choose a Quantity</h4>
-      <div className='flex justify-between'>
-        <div className='flex items-center gap-4'>
-          <div className='bg-gray-100 py-2 px-4 rounded-3xl flex items-center justify-between w-32'>
-            <button className='cursor-pointer text-xl' onClick={()=> handleQuantity("dec")}> - </button>
-            {quantity}
-            <button className='cursor-pointer text-xl' onClick={()=> handleQuantity("inc")}> + </button>
-          </div>
-          { stockNumber < 1 ? (
-            <div className='text-sm'>Products is out of stock</div>
-          ): 
-          (
-            <div className='text-sm'>
-              Only <span className='text-orange-500'>
-              {stockNumber} items</span> left! <br/> {"Don't"} miss it  
-            </div>
-          )}
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-navy-950">Quantity</h2>
+        {stockNumber < 1 ? (
+          <span className="text-xs font-semibold text-red-700 bg-red-50 px-3 py-1 rounded-full">
+            Currently Out of Stock
+          </span>
+        ) : (
+          <span className="text-xs text-slate-600">
+            Only <strong className="text-brand-700 font-semibold">{stockNumber} pieces</strong> available in atelier
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="bg-slate-100 py-2.5 px-5 rounded-full flex items-center justify-between w-36 border border-slate-200/80">
+          <button
+            type="button"
+            aria-label="Decrease quantity"
+            className="cursor-pointer text-lg font-bold text-navy-950 hover:text-brand-600 disabled:opacity-40 px-1"
+            onClick={() => handleQuantity("dec")}
+            disabled={quantity <= 1 || stockNumber < 1}
+          >
+            -
+          </button>
+          <span className="font-semibold text-sm text-navy-950">{quantity}</span>
+          <button
+            type="button"
+            aria-label="Increase quantity"
+            className="cursor-pointer text-lg font-bold text-navy-950 hover:text-brand-600 disabled:opacity-40 px-1"
+            onClick={() => handleQuantity("inc")}
+            disabled={quantity >= stockNumber || stockNumber < 1}
+          >
+            +
+          </button>
         </div>
 
-        <button className='w-36 text-sm rounded-3xl ring-1 ring-myred text-myred py-2 px-4 hover:bg-myred hover:text-white disabled:cursor-not-allowed disabled:bg-pink-200 disabled:text-white disabled:ring-none disabled:ring-0' 
-        onClick={() => addItem(wixClient, productId, variantId, quantity)} disabled={isLoading}>Add to cart</button>
+        <Button
+          size="lg"
+          className="flex-1 min-w-[160px]"
+          isLoading={isLoading}
+          disabled={stockNumber < 1}
+          onClick={() => addToBagSafely(productId, variantId, quantity, meta)}
+        >
+          {isLoading ? "Adding to Bag..." : stockNumber < 1 ? "Out of Stock" : "Add to Shopping Bag"}
+        </Button>
+
+        <button
+          type="button"
+          aria-label={isSaved ? "Remove from Wishlist" : "Save to Wishlist"}
+          onClick={() =>
+            toggleItem({
+              id: productId,
+              slug: meta?.slug || productId,
+              name: meta?.name || "Vistora Piece",
+              price: meta?.price || 0,
+              imageUrl: meta?.image || "/product.png",
+            })
+          }
+          className={`p-3.5 rounded-full ring-1 transition-all ${
+            isSaved ? "bg-brand-50 text-brand-600 ring-brand-600" : "bg-white text-navy-900 ring-slate-300 hover:ring-navy-900"
+          }`}
+        >
+          <HeartIcon className="w-5 h-5" filled={isSaved} />
+        </button>
       </div>
     </div>
-  )
+  );
 }

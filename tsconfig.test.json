@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["dom", "es2022"],
+    "jsx": "react-jsx",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": ".test-dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [
+    "tests/**/*.ts",
+    "src/lib/securityHelpers.ts",
+    "src/lib/wixProductNormalizer.ts",
+    "src/lib/checkoutHelper.ts",
+    "src/lib/cartHelpers.ts",
+    "src/lib/env.ts",
+    "src/services/authService.ts",
+    "src/services/catalogFilterHelper.ts",
+    "src/hooks/useAuthStore.ts",
+    "src/hooks/useCartStore.ts",
+    "src/hooks/useWishlistStore.ts"
+  ]
+}

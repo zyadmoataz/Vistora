@@ -1,0 +1,42 @@
+name: CI Quality & Build Gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  verify:
+    name: Lint, Typecheck, Test & Production Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run strict TypeScript check
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run production Next.js build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_WIX_CLIENT_ID: ${{ vars.NEXT_PUBLIC_WIX_CLIENT_ID || '00000000-0000-0000-0000-000000000000' }}
+          NEXT_PUBLIC_WIX_APP_ID: ${{ vars.NEXT_PUBLIC_WIX_APP_ID || '00000000-0000-0000-0000-000000000001' }}
+          FEATURED_PRODUCTS_CATEGORY_ID: ${{ vars.FEATURED_PRODUCTS_CATEGORY_ID || '00000000-0000-0000-0000-000000000002' }}
+          NEXT_PUBLIC_DEMO_MODE: "true"

@@ -1,26 +1,66 @@
 import { OAuthStrategy, createClient } from "@wix/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { ENV } from "./lib/env";
+
+const withFastTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> =>
+  Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout")), ms)
+    ),
+  ]);
 
 export const middleware = async (request: NextRequest) => {
-  const cookies = request.cookies;
-  const res = NextResponse.next(); 
+  const isPrefetch =
+    request.headers.get("next-router-prefetch") === "1" ||
+    request.headers.get("purpose") === "prefetch";
 
-//   check if our cookies has our refresh token as if it has our token then continue
-  if (cookies.get("refreshToken")) {
+  const res = NextResponse.next();
+
+  if (isPrefetch || request.cookies.get("refreshToken")) {
     return res;
   }
 
-//   if it has no refresh token then create a client
-  const wixClient = createClient({
-    auth: OAuthStrategy({ clientId: process.env.NEXT_PUBLIC_WIX_CLIENT_ID! }),
-  });
+  const secure = request.nextUrl.protocol === "https:";
 
-//   lets generate our token, we will take our refresh token and set it into our cookies
-// this is necesary as if we are not logged in we cans till access our cart
-  const tokens = await wixClient.auth.generateVisitorTokens();
-  res.cookies.set("refreshToken", JSON.stringify(tokens.refreshToken), {
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  if (!ENV.IS_WIX_CONFIGURED) {
+    res.cookies.set("refreshToken", JSON.stringify({ role: "visitor" }), {
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax",
+      secure,
+    });
+    return res;
+  }
+
+  try {
+    const wixClient = createClient({
+      auth: OAuthStrategy({ clientId: ENV.WIX_CLIENT_ID }),
+    });
+    const tokens = await withFastTimeout(
+      wixClient.auth.generateVisitorTokens(),
+      350
+    );
+    res.cookies.set("refreshToken", JSON.stringify(tokens.refreshToken), {
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+      sameSite: "lax",
+      secure,
+    });
+  } catch {
+    res.cookies.set("refreshToken", JSON.stringify({ role: "visitor" }), {
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+      sameSite: "lax",
+      secure,
+    });
+  }
 
   return res;
+};
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|icon.svg|manifest.webmanifest|robots.txt|sitemap.xml|.*\\.(?:png|jpg|jpeg|svg|ico|webp|avif)$).*)",
+  ],
 };
