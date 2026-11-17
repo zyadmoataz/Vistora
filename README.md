@@ -1,6 +1,13 @@
-# Vistora Atelier
+# Vistora Atelier — Headless E-Commerce Storefront
+
+[![Next.js](https://img.shields.io/badge/Next.js_14-000000?style=flat-square&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Zustand](https://img.shields.io/badge/Zustand-443E3B?style=flat-square&logo=react&logoColor=white)](https://github.com/pmndrs/zustand)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 
 Headless e-commerce storefront built with **Next.js 14 (App Router)**, **Strict TypeScript**, **Wix Headless SDK (`@wix/stores`, `@wix/ecom`, `@wix/sdk`)**, **Zustand**, and **Tailwind CSS**.
+
+**Live Demo:** [https://vistora-sage.vercel.app](https://vistora-sage.vercel.app)
 
 Designed around **SOLID / DRY** modularity, predictable state boundaries, client security controls, and fast Core Web Vitals. Every source module under `src/` adheres to single-responsibility separation (`<= 150` lines per file).
 
@@ -44,11 +51,6 @@ tests/              # TypeScript unit & store integration tests using Node's bui
 - **HTTP Response Headers (`next.config.mjs`)**: Configures `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`, and `Cross-Origin-Opener-Policy`.
 - **Zero Committed Secrets**: Live Wix storefront identifiers stay strictly in local/deployment environment variables (`.env` is gitignored); repository defaults contain safe non-functional placeholders.
 
-### Architecture Scope & Enterprise Upgrade Path
-Because this repository targets a self-contained frontend storefront without custom backend API routes:
-- Order totals and promo evaluation execute client-side (`checkoutHelper.ts`) and persist in user-scoped `localStorage`. In a real-money deployment, wire checkout confirmation to **Wix Hosted Checkout redirects** (`@wix/ecom`) or server payment intents/webhooks (e.g., Stripe) to enforce authoritative server pricing and inventory locking.
-- Offline credential fallback is governed by `NEXT_PUBLIC_DEMO_MODE`. Set `NEXT_PUBLIC_DEMO_MODE=false` in production deployments so only verified OAuth sessions authenticate.
-
 ---
 
 ## Application Routes
@@ -70,39 +72,15 @@ Because this repository targets a self-contained frontend storefront without cus
 
 ---
 
-## Environment Variables
-
-Copy the template file and populate values from your Wix Headless project settings:
-
-```bash
-cp .env.example .env
-```
-
-| Variable | Required | Description |
-| :--- | :--- | :--- |
-| `NEXT_PUBLIC_WIX_CLIENT_ID` | Yes (Live Wix) | OAuth Client ID from Wix Headless settings |
-| `NEXT_PUBLIC_WIX_APP_ID` | Yes (Live Wix) | Wix Stores App ID (`@wix/ecom` catalog reference) |
-| `FEATURED_PRODUCTS_CATEGORY_ID` | Optional | Collection ID rendered in the Homepage Featured grid |
-| `NEXT_PUBLIC_DEMO_MODE` | Optional | Defaults to `true`; set to `"false"` in production to disable offline demo login fallback |
-| `NEXT_PUBLIC_SITE_URL` | Optional | Canonical storefront origin used for metadata, sitemap, and `robots.txt` |
-
----
-
 ## Getting Started & Quality Gates
 
 Requires **Node.js 20+** (tested on **Node.js 22 LTS**).
 
 ```bash
-# Install dependencies
 npm install
-
-# Run development server
-npm run dev
-
-# Verification checks (also enforced via .github/workflows/ci.yml)
+npm run dev         # Start development server
 npm run lint        # ESLint (next/core-web-vitals)
 npm run typecheck   # Strict TypeScript compiler check (tsc --noEmit)
 npm test            # Unit & store isolation test suite (node:test)
 npm run build       # Production Next.js optimization build
-npm run start       # Serve production build locally
 ```
